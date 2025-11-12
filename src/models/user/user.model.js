@@ -115,6 +115,12 @@ const userSchema = new mongoose.Schema({
         sparse: true,
         unique: true
     },
+    passwordResetToken: {
+        type: String,
+    },
+    passwordResetExpires: {
+        type: Date,
+    },
 
     perfil: profileSchema,
     notificaciones: [notificationSchema],
