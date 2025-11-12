@@ -251,4 +251,33 @@ router.get('/statistics', auth, async (req, res) => {
   }
 });
 
+router.delete('/account', auth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    const validPassword = await bcrypt.compare(password, user.contrasena_hash);
+    
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Contraseña incorrecta' });
+    }
+    
+    const { Scan } = require('../../models/scan/scan.model');
+    await Scan.deleteMany({ usuario_id: req.user._id });
+    
+    const { Activity } = require('../../models/user/activity.model');
+    await Activity.deleteMany({ user_id: req.user._id });
+    
+    const { Notification } = require('../../models/user/notification.model');
+    await Notification.deleteMany({ user_id: req.user._id });
+    
+    await User.findByIdAndDelete(req.user._id);
+    
+    res.json({ message: 'Tu cuenta ha sido eliminada exitosamente' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 module.exports = router;
