@@ -220,4 +220,35 @@ router.delete('/sessions', auth, async (req, res) => {
     }
 });
 
+router.get('/statistics', auth, async (req, res) => {
+  try {
+    const { Scan } = require('../../models/scan/scan.model');
+    const { Vulnerability } = require('../../models/scan/vulnerability.model');
+    
+    const scansCount = await Scan.countDocuments({ usuario_id: req.user._id });
+    
+    const scans = await Scan.find({ usuario_id: req.user._id });
+    const scanIds = scans.map(scan => scan._id);
+    const vulnerabilitiesCount = await Vulnerability.countDocuments({ 
+      escaneo_id: { $in: scanIds } 
+    });
+    
+    const bestScan = await Scan.findOne({ usuario_id: req.user._id })
+      .sort({ puntuacion_final: -1 })
+      .limit(1);
+    
+    const statistics = {
+      scansPerformed: scansCount,
+      vulnerabilitiesDetected: vulnerabilitiesCount,
+      bestScore: bestScan ? bestScan.puntuacion_final : 0,
+      bestScanAlias: bestScan ? bestScan.alias : 'N/A'
+    };
+    
+    res.json(statistics);
+  } catch (error) {
+    console.error('Get statistics error:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 module.exports = router;
