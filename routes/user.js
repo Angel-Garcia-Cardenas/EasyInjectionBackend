@@ -3,10 +3,9 @@ const bcrypt = require('bcrypt');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
-// GET /api/user/profile - Get user profile
 router.get('/profile', auth, async (req, res) => {
     try {
-        const { User } = require('../models/usuario');
+        const { User } = require('../models/user');
         const user = await User.findById(req.user._id).select('-contrasena_hash -token_verificacion');
         
         if (!user) {
@@ -28,27 +27,24 @@ router.get('/profile', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error obteniendo perfil de usuario:', error);
+        console.error('Error fetching user profile:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// PUT /api/user/profile - Update user profile
 router.put('/profile', auth, async (req, res) => {
     try {
-        const { User } = require('../models/usuario');
+        const { User } = require('../models/user');
         const { username, email, avatarId } = req.body;
 
-        // Validate required fields
         if (!username || !email) {
             return res.status(400).json({
                 error: 'Username y email son requeridos'
             });
         }
 
-        // Check if username is already taken by another user
         const existingUser = await User.findOne({ 
             username: username,
             _id: { $ne: req.user._id }
@@ -60,7 +56,6 @@ router.put('/profile', auth, async (req, res) => {
             });
         }
 
-        // Check if email is already taken by another user
         const existingEmail = await User.findOne({ 
             email: email,
             _id: { $ne: req.user._id }
@@ -72,13 +67,11 @@ router.put('/profile', auth, async (req, res) => {
             });
         }
 
-        // Update user profile
         const updateData = {
             username: username,
             email: email
         };
 
-        // Add avatar if provided
         if (avatarId) {
             updateData.perfil = {
                 ...req.user.perfil,
@@ -106,34 +99,30 @@ router.put('/profile', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error actualizando perfil:', error);
+        console.error('Error updating profile:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// PUT /api/user/password - Change password
 router.put('/password', auth, async (req, res) => {
     try {
-        const { User } = require('../models/usuario');
+        const { User } = require('../models/user');
         const { currentPassword, newPassword } = req.body;
 
-        // Validate required fields
         if (!currentPassword || !newPassword) {
             return res.status(400).json({
                 error: 'Contraseña actual y nueva contraseña son requeridas'
             });
         }
 
-        // Validate new password strength
         if (newPassword.length < 8) {
             return res.status(400).json({
                 error: 'La nueva contraseña debe tener al menos 8 caracteres'
             });
         }
 
-        // Get user with password
         const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({
@@ -141,7 +130,6 @@ router.put('/password', auth, async (req, res) => {
             });
         }
 
-        // Verify current password
         const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.contrasena_hash);
         if (!isCurrentPasswordValid) {
             return res.status(400).json({
@@ -149,11 +137,9 @@ router.put('/password', auth, async (req, res) => {
             });
         }
 
-        // Hash new password
         const saltRounds = 10;
         const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
 
-        // Update password
         await User.findByIdAndUpdate(req.user._id, {
             contrasena_hash: newPasswordHash
         });
@@ -162,40 +148,28 @@ router.put('/password', auth, async (req, res) => {
             message: 'Contraseña actualizada exitosamente'
         });
     } catch (error) {
-        console.error('Error cambiando contraseña:', error);
+        console.error('Error changing password:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// POST /api/user/logout - Logout user
 router.post('/logout', auth, async (req, res) => {
     try {
-        // In a real application, you might want to:
-        // 1. Add the token to a blacklist
-        // 2. Update user's last logout time
-        // 3. Clear any session data
-        
-        // For now, we'll just return a success message
-        // The client should remove the token from localStorage
-        
         res.json({
             message: 'Sesión cerrada exitosamente'
         });
     } catch (error) {
-        console.error('Error en logout:', error);
+        console.error('Logout error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// GET /api/user/sessions - Get active sessions (mock data for now)
 router.get('/sessions', auth, async (req, res) => {
     try {
-        // In a real application, you would track active sessions
-        // For now, return mock data
         const sessions = [
             {
                 id: 's1',
@@ -211,43 +185,35 @@ router.get('/sessions', auth, async (req, res) => {
             sessions: sessions
         });
     } catch (error) {
-        console.error('Error obteniendo sesiones:', error);
+        console.error('Error fetching sessions:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// DELETE /api/user/sessions/:sessionId - Close specific session
 router.delete('/sessions/:sessionId', auth, async (req, res) => {
     try {
         const { sessionId } = req.params;
-        
-        // In a real application, you would invalidate the specific session
-        // For now, just return success
         
         res.json({
             message: 'Sesión cerrada exitosamente'
         });
     } catch (error) {
-        console.error('Error cerrando sesión:', error);
+        console.error('Error closing session:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// DELETE /api/user/sessions - Close all sessions except current
 router.delete('/sessions', auth, async (req, res) => {
     try {
-        // In a real application, you would invalidate all sessions except current
-        // For now, just return success
-        
         res.json({
             message: 'Todas las sesiones cerradas exitosamente'
         });
     } catch (error) {
-        console.error('Error cerrando todas las sesiones:', error);
+        console.error('Error closing all sessions:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });

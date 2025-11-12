@@ -1,7 +1,7 @@
 {
     "baseUrlFrontend": "BASE_URL_FRONTEND",
-    "jwtPrivateKey": "easyinjection_dev_jwtPrivateKey_2024",
-    "db": "EASYINJECTION_DB",
+    "jwtPrivateKey": "1234",
+    "db": "mongodb://127.0.0.1:27017/easyInjection_dev",
     "sqlmap": {
         "path": "SQLMAP_PATH",
         "timeout": "SQLMAP_TIMEOUT"

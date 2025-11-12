@@ -3,56 +3,6 @@
  * 
  * This is a modular orchestrator that coordinates different scanning phases.
  * See individual modules in orchestrator/ directory for implementation details.
- * 
- * CONFIGURATION:
- * 
- * scanConfig object structure:
- * {
- *   url: "http://target.com",              // Target URL (REQUIRED)
- *   flags: { sqli: true, xss: true },      // Enable/disable scan types (OPTIONAL, defaults to both true)
- *   
- *   // Tool paths (OPTIONAL - uses PATH if not specified)
- *   sqlmapPath: "sqlmap",                  // Path to sqlmap executable
- *   dalfoxPath: "dalfox",                  // Path to dalfox executable
- *   
- *   // SQLMap configuration (OPTIONAL)
- *   crawlDepth: 2,                         // Crawling depth (default: 2)
- *   level: 1,                              // Test level 1-5 (default: 1)
- *   risk: 1,                               // Risk level 1-3 (default: 1)
- *   threads: 1,                            // Number of threads (default: 1)
- *   timeout: 30,                           // Timeout per test in seconds (default: 30)
- *   
- *   // Dalfox configuration (OPTIONAL)
- *   dalfoxWorkers: 10,                     // Number of workers (default: 10)
- *   dalfoxDelay: 0,                        // Delay between requests in ms (default: 0)
- *   
- *   // Exploitation settings (OPTIONAL)
- *   enableExploitation: false,             // Enable POC exploitation (default: false)
- *   
- *   // DBMS (OPTIONAL)
- *   dbms: "MySQL",                         // Target DBMS or null/auto
- *   
- *   // Custom headers (OPTIONAL)
- *   headers: {                             // Object format (legacy)
- *     "Authorization": "Bearer token"
- *   },
- *   customHeaders: "Header: Value\nHeader2: Value2"  // String format (new)
- * }
- * 
- * EVENTS EMITTED:
- * - scan:started: Scan initiated
- * - phase:started: Phase started
- * - phase:completed: Phase completed
- * - subphase:started: Sub-phase started
- * - subphase:completed: Sub-phase completed
- * - log:added: New log entry
- * - endpoint:discovered: New endpoint found
- * - parameter:discovered: New parameter identified
- * - vulnerability:found: Vulnerability detected
- * - question:asked: Question displayed (pauses scan)
- * - question:result: Question answered
- * - scan:completed: Scan finished successfully
- * - scan:error: Error occurred
  */
 
 const EventEmitter = require('events');
@@ -74,11 +24,10 @@ class ScanOrchestrator extends EventEmitter {
     constructor(scanId, scanConfig) {
         super();
         
-        // Validate and normalize configuration
         try {
             this.config = validateAndNormalizeConfig(scanConfig);
         } catch (error) {
-            throw new Error(`Configuración inválida: ${error.message}`);
+            throw new Error(`Invalid configuration: ${error.message}`);
         }
         
         this.scanId = scanId;
@@ -86,7 +35,7 @@ class ScanOrchestrator extends EventEmitter {
         this.discoveredEndpoints = [];
         this.discoveredParameters = [];
         this.vulnerabilities = [];
-        this.questionResults = []; // Track all question results
+        this.questionResults = [];
         this.activeProcesses = new Map();
         this.isPaused = false;
         this.isStopped = false;
@@ -98,17 +47,14 @@ class ScanOrchestrator extends EventEmitter {
             parametersFound: 0
         };
         
-        // Create output directory for this scan
         const outputDir = path.join(os.tmpdir(), 'easyinjection_scans', `scan_${scanId}`);
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }
         
-        // Add outputDir to config for executors
         this.config.outputDir = outputDir;
         this.config.tmpDir = path.join(os.tmpdir(), 'easyinjection_sqlmap_tmp');
         
-        // Initialize modules
         this.logger = new Logger(this);
         this.questionHandler = new QuestionHandler(this, this.logger);
         
@@ -126,7 +72,6 @@ class ScanOrchestrator extends EventEmitter {
             this.activeProcesses
         );
         
-        // Set up endpoint discovery listener for sqlmap crawl
         this.on('endpoint:crawl-discovered', (data) => {
             if (this.discoveryPhase) {
                 this.discoveryPhase.addEndpoint({
@@ -137,12 +82,10 @@ class ScanOrchestrator extends EventEmitter {
             }
         });
         
-        // Track question results
         this.on('question:result', (result) => {
             this.questionResults.push(result);
         });
         
-        // Define phases structure
         this.phases = [
             { id: 'init', name: 'Inicialización', status: 'pending' },
             { id: 'discovery', name: 'Descubrimiento de endpoints y parámetros', status: 'pending' },
@@ -161,9 +104,6 @@ class ScanOrchestrator extends EventEmitter {
         ];
     }
     
-    /**
-     * Start the scan process
-     */
     async start() {
         try {
             this.isStopped = false;
@@ -184,7 +124,6 @@ class ScanOrchestrator extends EventEmitter {
                 await this.runPhase('xss');
             }
             
-            // Wait for all active processes to complete before generating report
             if (!this.isStopped) {
                 await this.waitForAllProcesses();
                 await this.runPhase('report');
@@ -200,7 +139,7 @@ class ScanOrchestrator extends EventEmitter {
             }
         } catch (error) {
             if (!this.isStopped) {
-                this.logger.addLog(`Error crítico: ${error.message}`, 'error');
+                this.logger.addLog(`Critical error: ${error.message}`, 'error');
                 this.emit('scan:error', { scanId: this.scanId, error: error.message });
             }
             this.killAllProcesses();
@@ -208,14 +147,11 @@ class ScanOrchestrator extends EventEmitter {
         }
     }
 
-    /**
-     * Wait for all active processes to complete
-     */
     async waitForAllProcesses() {
-        this.logger.addLog('Esperando a que finalicen todos los procesos...', 'info');
+        this.logger.addLog('Waiting for all processes to finish...', 'info');
         
-        const maxWaitTime = 60000; // 60 seconds max wait
-        const checkInterval = 1000; // Check every second
+        const maxWaitTime = 60000;
+        const checkInterval = 1000;
         let elapsed = 0;
         
         while (this.activeProcesses.size > 0 && elapsed < maxWaitTime) {
@@ -224,28 +160,22 @@ class ScanOrchestrator extends EventEmitter {
         }
         
         if (this.activeProcesses.size > 0) {
-            this.logger.addLog(`Advertencia: ${this.activeProcesses.size} proceso(s) aún activo(s) después de espera máxima`, 'warning');
+            this.logger.addLog(`Warning: ${this.activeProcesses.size} process(es) still active after max wait time`, 'warning');
         } else {
-            this.logger.addLog('Todos los procesos han finalizado', 'success');
+            this.logger.addLog('All processes have finished', 'success');
         }
     }
     
-    /**
-     * Kill all active subprocesses
-     */
     killAllProcesses() {
         for (const [name, proc] of this.activeProcesses.entries()) {
             if (proc && !proc.killed) {
-                this.logger.addLog(`Terminando proceso: ${name}`, 'warning');
+                this.logger.addLog(`Terminating process: ${name}`, 'warning');
                 proc.kill('SIGTERM');
             }
         }
         this.activeProcesses.clear();
     }
 
-    /**
-     * Run a phase
-     */
     async runPhase(phaseId) {
         if (this.isStopped) return;
         
@@ -253,10 +183,10 @@ class ScanOrchestrator extends EventEmitter {
         if (!phase) return;
 
         this.currentPhase = phaseId;
-        this.logger.setCurrentPhase(phaseId); // Set phase context for logger
+        this.logger.setCurrentPhase(phaseId);
         phase.status = 'running';
         this.emit('phase:started', { phase: phaseId, name: phase.name });
-        this.logger.addLog(`Iniciando fase: ${phase.name}`, 'info', phaseId);
+        this.logger.addLog(`Starting phase: ${phase.name}`, 'info', phaseId);
 
         try {
             switch (phaseId) {
@@ -290,21 +220,17 @@ class ScanOrchestrator extends EventEmitter {
         if (!this.isStopped) {
             phase.status = 'completed';
             this.emit('phase:completed', { phase: phaseId, name: phase.name });
-            this.logger.addLog(`Fase completada: ${phase.name}`, 'success', phaseId);
+            this.logger.addLog(`Phase completed: ${phase.name}`, 'success', phaseId);
         }
     }
 
-    /**
-     * Initialize scan
-     */
     async initializeScan() {
         await this.questionHandler.waitIfPaused();
         
-        this.logger.addLog('Validando configuración del escaneo...', 'info');
-        this.logger.addLog(`URL objetivo: ${this.config.url}`, 'info');
-        this.logger.addLog(`Flags activos: SQLi=${this.config.flags.sqli}, XSS=${this.config.flags.xss}`, 'info');
+        this.logger.addLog('Validating scan configuration...', 'info');
+        this.logger.addLog(`Target URL: ${this.config.url}`, 'info');
+        this.logger.addLog(`Active flags: SQLi=${this.config.flags.sqli}, XSS=${this.config.flags.xss}`, 'info');
         
-        // Check tool availability
         await this.sqlmapExecutor.checkAvailability();
         if (this.config.flags.xss) {
             await this.dalfoxExecutor.checkAvailability();
@@ -312,15 +238,11 @@ class ScanOrchestrator extends EventEmitter {
         
         await this.questionHandler.waitIfPaused();
         
-        // Ask initialization question
         await this.questionHandler.askQuestion(null, 'init');
         
-        this.logger.addLog('Inicialización completada', 'success');
+        this.logger.addLog('Initialization completed', 'success');
     }
 
-    /**
-     * Run discovery phase (fused with parameters phase)
-     */
     async runDiscoveryPhase() {
         const phase = new DiscoveryPhase(
             this.config,
@@ -332,9 +254,6 @@ class ScanOrchestrator extends EventEmitter {
         return await phase.run();
     }
 
-    /**
-     * Add vulnerability to discovered vulnerabilities list
-     */
     addVulnerability(vuln) {
         if (!this.vulnerabilities.some(v => 
             v.type === vuln.type && 
@@ -344,13 +263,10 @@ class ScanOrchestrator extends EventEmitter {
             this.vulnerabilities.push(vuln);
             this.stats.vulnerabilitiesFound++;
             this.emit('vulnerability:found', vuln);
-            this.logger.addLog(`Vulnerabilidad encontrada: ${vuln.type} en ${vuln.endpoint}`, 'success');
+            this.logger.addLog(`Vulnerability found: ${vuln.type} at ${vuln.endpoint}`, 'success');
         }
     }
 
-    /**
-     * Run SQLi phase
-     */
     async runSQLiPhase() {
         const phase = new SQLiPhase(
             this.config,
@@ -365,9 +281,6 @@ class ScanOrchestrator extends EventEmitter {
         await phase.run();
     }
 
-    /**
-     * Run XSS phase
-     */
     async runXSSPhase() {
         const phase = new XSSPhase(
             this.config,
@@ -382,41 +295,29 @@ class ScanOrchestrator extends EventEmitter {
         await phase.run();
     }
 
-    /**
-     * Generate report
-     */
     async generateReport() {
         await this.sleep(1500);
-        this.logger.addLog('Generando reporte final...', 'info');
-        this.logger.addLog(`Vulnerabilidades encontradas: ${this.stats.vulnerabilitiesFound}`, 'info');
-        this.logger.addLog(`Endpoints analizados: ${this.stats.endpointsDiscovered}`, 'info');
-        this.logger.addLog(`Parámetros testeados: ${this.stats.parametersFound}`, 'info');
+        this.logger.addLog('Generating final report...', 'info');
+        this.logger.addLog(`Vulnerabilities found: ${this.stats.vulnerabilitiesFound}`, 'info');
+        this.logger.addLog(`Endpoints analyzed: ${this.stats.endpointsDiscovered}`, 'info');
+        this.logger.addLog(`Parameters tested: ${this.stats.parametersFound}`, 'info');
         await this.sleep(1000);
-        this.logger.addLog('Reporte generado exitosamente', 'success');
+        this.logger.addLog('Report generated successfully', 'success');
     }
 
-    /**
-     * Answer a question (called externally)
-     */
     answerQuestion(answer) {
         this.questionHandler.answerQuestion(answer);
     }
 
-    /**
-     * Pause the scan
-     */
     pause() {
         if (this.isStopped) return;
         
         this.isPaused = true;
         this.questionHandler.isPaused = true;
-        this.logger.addLog('Escaneo pausado por el usuario', 'warning');
+        this.logger.addLog('Scan paused by user', 'warning');
         this.emit('scan:paused', { scanId: this.scanId });
     }
 
-    /**
-     * Resume the scan
-     */
     resume() {
         if (this.isStopped) return;
         
@@ -426,13 +327,10 @@ class ScanOrchestrator extends EventEmitter {
             this.questionHandler.pauseResolver();
             this.questionHandler.pauseResolver = null;
         }
-        this.logger.addLog('Escaneo reanudado', 'info');
+        this.logger.addLog('Scan resumed', 'info');
         this.emit('scan:resumed', { scanId: this.scanId });
     }
 
-    /**
-     * Stop the scan
-     */
     stop() {
         if (this.isStopped) return;
         
@@ -444,21 +342,15 @@ class ScanOrchestrator extends EventEmitter {
             this.questionHandler.pauseResolver = null;
         }
         
-        this.logger.addLog('Escaneo detenido por el usuario', 'warning');
+        this.logger.addLog('Scan stopped by user', 'warning');
         this.killAllProcesses();
         this.emit('scan:stopped', { scanId: this.scanId });
     }
 
-    /**
-     * Sleep utility
-     */
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    /**
-     * Get current status
-     */
     getStatus() {
         return {
             scanId: this.scanId,

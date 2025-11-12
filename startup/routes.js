@@ -9,7 +9,6 @@ const scans = require('../routes/scans');
 const error = require('../middleware/error');
 
 module.exports = function(app) {
-    // Using middleware
     app.use(cors());
     app.use(express.json());
     app.use('/api/register', register);

@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
-// Subdocumento para notificaciones
 const notificationSchema = new mongoose.Schema({
     titulo: { 
         type: String, 
@@ -24,7 +23,6 @@ const notificationSchema = new mongoose.Schema({
     }
 });
 
-// Subdocumento para historial de respuestas
 const historySchema = new mongoose.Schema({
     pregunta_id: { 
         type: mongoose.Schema.Types.ObjectId, 
@@ -51,7 +49,6 @@ const historySchema = new mongoose.Schema({
         default: Date.now }
 });
 
-// Subdocumento para perfil
 const profileSchema = new mongoose.Schema({
     nivel_actual: { 
         type: Number, 
@@ -60,10 +57,8 @@ const profileSchema = new mongoose.Schema({
     avatarId: { 
         type: String,
         default: 'avatar1'
-    } // ID del avatar predefinido
+    }
 });
-
-// Schema de usuarios
 const userSchema = new mongoose.Schema({
     username: {
         type: String,
@@ -97,7 +92,7 @@ const userSchema = new mongoose.Schema({
         enum: ['pendiente', 'activo', 'inactivo', 'suspendido'],
         default: 'pendiente'
     },
-    email_verificado: { // Este campo no está en la documentación
+    email_verificado: {
         type: Boolean,
         default: false
     },
@@ -113,7 +108,6 @@ const userSchema = new mongoose.Schema({
     historial_respuestas: [historySchema]
 });
 
-// Método para generar token JWT
 userSchema.methods.generateAuthToken = function () {
     const token = jwt.sign(
         { _id: this._id, username: this.username, email: this.email },
@@ -123,10 +117,8 @@ userSchema.methods.generateAuthToken = function () {
     return token;
 };
 
-// Modelo
 const User = mongoose.model('User', userSchema);
 
-// Validación con Joi
 function validateUser(user) {
     const schema = Joi.object({
         username: Joi.string().min(3).max(50).required(),

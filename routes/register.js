@@ -1,14 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { User, validate } = require('../models/usuario');
+const { User, validate } = require('../models/user');
 const emailService = require('../services/emailService');
 const router = express.Router();
 
-// POST /api/register
 router.post('/', async (req, res) => {
     try {
-        // Validate the request body
         const { error } = validate(req.body);
         if (error) {
             return res.status(400).json({ 
@@ -17,7 +15,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Check if user already exists
         let user = await User.findOne({ 
             $or: [
                 { email: req.body.email },
@@ -38,16 +35,13 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Hash the password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
-        // Generate verification token
         const verificationToken = crypto.randomBytes(32).toString('hex');
         const expirationDate = new Date();
-        expirationDate.setHours(expirationDate.getHours() + 24); // 24 hours from now
+        expirationDate.setHours(expirationDate.getHours() + 24);
 
-        // Create new user
         user = new User({
             username: req.body.username,
             email: req.body.email,
@@ -58,14 +52,12 @@ router.post('/', async (req, res) => {
 
         await user.save();
 
-        // Send verification email
         const emailSent = await emailService.sendVerificationEmail(
             user.email, 
             user.username, 
             verificationToken
         );
 
-        // Return user data (without password) and verification status
         res.status(201).json({
             message: 'Usuario registrado exitosamente. Por favor verifica tu email para activar tu cuenta.',
             user: {
@@ -82,7 +74,7 @@ router.post('/', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en registro:', error);
+        console.error('Registration error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });

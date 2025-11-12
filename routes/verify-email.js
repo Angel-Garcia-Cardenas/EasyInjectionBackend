@@ -1,10 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
-const { User } = require('../models/usuario');
+const { User } = require('../models/user');
 const emailService = require('../services/emailService');
 const router = express.Router();
 
-// POST /api/verify-email
 router.post('/', async (req, res) => {
     try {
         const { token } = req.body;
@@ -15,7 +14,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Find user by verification token
         const user = await User.findOne({ 
             token_verificacion: token,
             fecha_expiracion_token: { $gt: new Date() }
@@ -27,7 +25,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Update user verification status
         user.email_verificado = true;
         user.estado_cuenta = 'activo';
         user.token_verificacion = undefined;
@@ -47,19 +44,17 @@ router.post('/', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en verificación de email:', error);
+        console.error('Email verification error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// GET /api/verify-email/:token (for direct link verification)
 router.get('/:token', async (req, res) => {
     try {
         const { token } = req.params;
         
-        // Find user by verification token
         const user = await User.findOne({ 
             token_verificacion: token,
             fecha_expiracion_token: { $gt: new Date() }
@@ -71,7 +66,6 @@ router.get('/:token', async (req, res) => {
             });
         }
 
-        // Update user verification status
         user.email_verificado = true;
         user.estado_cuenta = 'activo';
         user.token_verificacion = undefined;
@@ -91,14 +85,13 @@ router.get('/:token', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en verificación de email:', error);
+        console.error('Email verification error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// POST /api/verify-email/resend
 router.post('/resend', async (req, res) => {
     try {
         const { email } = req.body;
@@ -109,7 +102,6 @@ router.post('/resend', async (req, res) => {
             });
         }
 
-        // Find user by email
         const user = await User.findOne({ email });
         
         if (!user) {
@@ -124,17 +116,14 @@ router.post('/resend', async (req, res) => {
             });
         }
 
-        // Generate new verification token
         const verificationToken = crypto.randomBytes(32).toString('hex');
         const expirationDate = new Date();
         expirationDate.setHours(expirationDate.getHours() + 24);
 
-        // Update user with new token
         user.token_verificacion = verificationToken;
         user.fecha_expiracion_token = expirationDate;
         await user.save();
 
-        // Send new verification email
         const emailSent = await emailService.sendVerificationEmail(
             user.email, 
             user.username, 
@@ -152,7 +141,7 @@ router.post('/resend', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Error reenviando email de verificación:', error);
+        console.error('Error resending verification email:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });

@@ -1,7 +1,6 @@
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
-// Schema de preguntas
 const questionSchema = new mongoose.Schema({
     texto_pregunta: { type: String, required: true },
     dificultad: { 
@@ -17,10 +16,8 @@ const questionSchema = new mongoose.Schema({
     }
 });
 
-// Modelo
 const Question = mongoose.model('Question', questionSchema);
 
-// Validación con Joi
 function validateQuestion(question) {
     const schema = Joi.object({
         texto_pregunta: Joi.string().required(),

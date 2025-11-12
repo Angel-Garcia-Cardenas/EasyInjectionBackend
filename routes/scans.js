@@ -1,19 +1,17 @@
 const express = require('express');
 const auth = require('../middleware/auth');
-const { Scan } = require('../models/escaneo');
-const { Vulnerability } = require('../models/vulnerabilidad');
-const { VulnerabilityType } = require('../models/tipo_vulnerabilidad');
-const { NivelSeveridad } = require('../models/nivel_severidad');
+const { Scan } = require('../models/scan');
+const { Vulnerability } = require('../models/vulnerability');
+const { VulnerabilityType } = require('../models/vulnerability_type');
+const { SeverityLevel } = require('../models/severity_level');
 const router = express.Router();
 
-// GET /api/scans - Get all scans for the authenticated user
 router.get('/', auth, async (req, res) => {
     try {
         const scans = await Scan.find({ usuario_id: req.user._id })
             .populate('vulnerabilidades')
             .sort({ fecha_inicio: -1 });
 
-        // Get vulnerability counts and types for each scan
         const scansWithDetails = await Promise.all(scans.map(async (scan) => {
             const vulnerabilities = await Vulnerability.find({ escaneo_id: scan._id })
                 .populate('tipo_id', 'nombre')
@@ -50,7 +48,6 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-// GET /api/scans/:id - Get specific scan details
 router.get('/:id', auth, async (req, res) => {
     try {
         const scan = await Scan.findOne({ 
@@ -65,7 +62,6 @@ router.get('/:id', auth, async (req, res) => {
             });
         }
 
-        // Get detailed vulnerabilities
         const vulnerabilities = await Vulnerability.find({ escaneo_id: scan._id })
             .populate('tipo_id', 'nombre descripcion')
             .populate('nivel_severidad_id', 'nombre nivel color');
@@ -92,11 +88,10 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
-// GET /api/scans/:id/report - Get complete scan report with vulnerabilities and quiz results
 router.get('/:id/report', auth, async (req, res) => {
     try {
-        const { Question } = require('../models/pregunta');
-        const { Answer } = require('../models/respuesta');
+        const { Question } = require('../models/question');
+        const { Answer } = require('../models/answer');
 
         const scan = await Scan.findOne({ 
             _id: req.params.id, 
@@ -110,12 +105,9 @@ router.get('/:id/report', auth, async (req, res) => {
             });
         }
 
-        // Get detailed vulnerabilities with counts by severity
         const vulnerabilities = await Vulnerability.find({ escaneo_id: scan._id })
             .populate('tipo_id', 'nombre descripcion')
             .populate('nivel_severidad_id', 'nombre nivel color');
-
-        // Count vulnerabilities by severity
         const severityCounts = {
             critica: 0,
             alta: 0,
@@ -136,7 +128,6 @@ router.get('/:id/report', auth, async (req, res) => {
             }
         });
 
-        // Populate quiz questions and answers
         const quizResults = [];
         if (scan.respuestas_usuario && scan.respuestas_usuario.length > 0) {
             for (const userAnswer of scan.respuestas_usuario) {
@@ -186,7 +177,6 @@ router.get('/:id/report', auth, async (req, res) => {
     }
 });
 
-// POST /api/scans - Create a new scan
 router.post('/', auth, async (req, res) => {
     try {
         const { alias, url, flags, tipo_autenticacion, credenciales } = req.body;
@@ -223,7 +213,6 @@ router.post('/', auth, async (req, res) => {
     }
 });
 
-// PUT /api/scans/:id - Update scan status
 router.put('/:id', auth, async (req, res) => {
     try {
         const { estado, fecha_fin } = req.body;
@@ -265,7 +254,6 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-// DELETE /api/scans/:id - Delete a scan
 router.delete('/:id', auth, async (req, res) => {
     try {
         const scan = await Scan.findOneAndDelete({ 
@@ -280,7 +268,6 @@ router.delete('/:id', auth, async (req, res) => {
             });
         }
 
-        // Also delete associated vulnerabilities
         await Vulnerability.deleteMany({ escaneo_id: scan._id });
 
         res.json({
@@ -296,7 +283,6 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
-// POST /api/scans/:id/vulnerabilities - Add vulnerability to scan
 router.post('/:id/vulnerabilities', auth, async (req, res) => {
     try {
         const { tipo_id, nivel_severidad_id, parametro_afectado, url_afectada, descripcion, sugerencia, referencia } = req.body;
@@ -314,7 +300,6 @@ router.post('/:id/vulnerabilities', auth, async (req, res) => {
 
         await vulnerability.save();
 
-        // Update scan to include this vulnerability
         await Scan.findByIdAndUpdate(req.params.id, {
             $push: { vulnerabilidades: vulnerability._id }
         });
@@ -341,7 +326,6 @@ router.post('/:id/vulnerabilities', auth, async (req, res) => {
     }
 });
 
-// POST /api/scans/:id/start - Start a scan execution
 router.post('/:id/start', auth, async (req, res) => {
     try {
         const scan = await Scan.findOne({
@@ -356,7 +340,6 @@ router.post('/:id/start', auth, async (req, res) => {
             });
         }
 
-        // Check if scan is already running
         const socketService = require('../services/socketService');
         if (socketService.isScanning(scan._id.toString())) {
             return res.status(400).json({
@@ -365,7 +348,6 @@ router.post('/:id/start', auth, async (req, res) => {
             });
         }
 
-        // Extract optional config from request body
         const { dbms, customHeaders } = req.body;
 
         res.json({
@@ -386,7 +368,6 @@ router.post('/:id/start', auth, async (req, res) => {
     }
 });
 
-// GET /api/scans/:id/status - Get current scan status
 router.get('/:id/status', auth, async (req, res) => {
     try {
         const scan = await Scan.findOne({

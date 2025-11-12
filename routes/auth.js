@@ -2,26 +2,23 @@ const express = require('express');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
-// GET /api/auth/verify - Verify token and get user info
 router.get('/verify', auth, async (req, res) => {
     try {
-        // If we reach here, the token is valid and user is authenticated
         res.json({
             message: 'Token válido',
             user: req.user
         });
     } catch (error) {
-        console.error('Error en verificación de token:', error);
+        console.error('Error verifying token:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
     }
 });
 
-// GET /api/auth/me - Get current user profile
 router.get('/me', auth, async (req, res) => {
     try {
-        const { User } = require('../models/usuario');
+        const { User } = require('../models/user');
         const user = await User.findById(req.user._id).select('-contrasena_hash -token_verificacion');
         
         if (!user) {
@@ -43,7 +40,7 @@ router.get('/me', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error obteniendo perfil de usuario:', error);
+        console.error('Error fetching user profile:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });

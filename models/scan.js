@@ -1,7 +1,6 @@
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
-// Subdocumento para respuestas del usuario en el cuestionario
 const userAnswerSchema = new mongoose.Schema({
     pregunta_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true },
     respuesta_seleccionada_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Answer', required: true },
@@ -9,7 +8,6 @@ const userAnswerSchema = new mongoose.Schema({
     puntos_obtenidos: { type: Number, default: 0 }
 });
 
-// Schema de escaneos
 const scanSchema = new mongoose.Schema({
     usuario_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     alias: { type: String, maxlength: 150, required: true },
@@ -45,13 +43,9 @@ const scanSchema = new mongoose.Schema({
     fecha_fin: { type: Date },
     cookie: { type: String, maxlength: 255 },
 
-    // Referencias a vulnerabilidades
     vulnerabilidades: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Vulnerability' }],
 
-    // Cuestionario del usuario
     respuestas_usuario: [userAnswerSchema],
-
-    // Puntuación del escaneo
     puntuacion: {
         puntos_cuestionario: { type: Number, default: 0 },
         total_puntos_cuestionario: { type: Number, default: 0 },
@@ -61,32 +55,24 @@ const scanSchema = new mongoose.Schema({
     }
 });
 
-// Método para calcular la puntuación final
 scanSchema.methods.calculateScore = function() {
     const maxScore = 100;
     
-    // Puntuación del cuestionario (60% del total)
     let quizPercentage = 0;
     if (this.puntuacion.total_puntos_cuestionario > 0) {
         quizPercentage = (this.puntuacion.puntos_cuestionario / this.puntuacion.total_puntos_cuestionario) * 60;
     }
     
-    // Penalización por vulnerabilidades (40% del total)
-    // Cada vulnerabilidad reduce puntos según su severidad
     let vulnerabilityPenalty = 0;
     const criticalWeight = 10;
     const highWeight = 5;
     const mediumWeight = 3;
     const lowWeight = 1;
     
-    // La penalización se calcula en base al número de vulnerabilidades
-    // Por ahora usamos el conteo general, pero se puede refinar por severidad
     const vulnerabilityScore = Math.max(0, 40 - (this.puntuacion.vulnerabilidades_encontradas * 5));
     
-    // Puntuación final
     this.puntuacion.puntuacion_final = Math.round(quizPercentage + vulnerabilityScore);
     
-    // Determinar calificación
     if (this.puntuacion.puntuacion_final >= 90) {
         this.puntuacion.calificacion = 'Excelente';
     } else if (this.puntuacion.puntuacion_final >= 75) {
@@ -100,10 +86,8 @@ scanSchema.methods.calculateScore = function() {
     }
 };
 
-// Modelo
 const Scan = mongoose.model('Scan', scanSchema);
 
-// Validación con Joi
 function validateScan(scan) {
     const schema = Joi.object({
         usuario_id: Joi.string().required(),

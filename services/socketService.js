@@ -1,18 +1,18 @@
 const socketIO = require('socket.io');
 const ScanOrchestrator = require('./scanOrchestrator');
-const { Scan } = require('../models/escaneo');
-const { Vulnerability } = require('../models/vulnerabilidad');
-const { VulnerabilityType } = require('../models/tipo_vulnerabilidad');
-const { SeverityLevel } = require('../models/nivel_severidad');
-const { Question } = require('../models/pregunta');
-const { Answer } = require('../models/respuesta');
+const { Scan } = require('../models/scan');
+const { Vulnerability } = require('../models/vulnerability');
+const { VulnerabilityType } = require('../models/vulnerability_type');
+const { SeverityLevel } = require('../models/severity_level');
+const { Question } = require('../models/question');
+const { Answer } = require('../models/answer');
 const jwt = require('jsonwebtoken');
 const config = require('config');
 
 class SocketService {
     constructor() {
         this.io = null;
-        this.activeScans = new Map(); // scanId -> orchestrator instance
+        this.activeScans = new Map();
     }
 
     initialize(server) {
@@ -24,7 +24,6 @@ class SocketService {
             }
         });
 
-        // Authentication middleware
         this.io.use((socket, next) => {
             const token = socket.handshake.auth.token;
             
@@ -44,12 +43,10 @@ class SocketService {
         this.io.on('connection', (socket) => {
             console.log(`Client connected: ${socket.id}, User: ${socket.userId}`);
 
-            // Join scan room
             socket.on('scan:join', async (data) => {
                 const { scanId } = data;
                 
                 try {
-                    // Verify scan belongs to user
                     const scan = await Scan.findById(scanId);
                     if (!scan) {
                         return socket.emit('error', { message: 'Scan not found' });
@@ -62,7 +59,6 @@ class SocketService {
                     socket.join(`scan:${scanId}`);
                     console.log(`Socket ${socket.id} joined scan room: ${scanId}`);
 
-                    // Send current scan status if active
                     const orchestrator = this.activeScans.get(scanId);
                     if (orchestrator) {
                         socket.emit('scan:status', orchestrator.getStatus());
@@ -73,38 +69,30 @@ class SocketService {
                 }
             });
 
-            // Start a new scan
             socket.on('scan:start', async (data) => {
                 const { scanId, config: scanConfig } = data;
 
                 try {
-                    // Verify scan exists and belongs to user
                     const scan = await Scan.findById(scanId);
                     if (!scan || scan.usuario_id.toString() !== socket.userId) {
                         return socket.emit('error', { message: 'Unauthorized or scan not found' });
                     }
 
-                    // Check if scan is already running
                     if (this.activeScans.has(scanId)) {
                         return socket.emit('error', { message: 'Scan already running' });
                     }
 
-                    // Create orchestrator instance
                     const orchestrator = new ScanOrchestrator(scanId, scanConfig);
                     this.activeScans.set(scanId, orchestrator);
 
-                    // Set up event listeners
                     this.setupOrchestratorListeners(orchestrator, scanId);
 
-                    // Send initial status with phases to all clients in room
                     this.io.to(`scan:${scanId}`).emit('scan:status', orchestrator.getStatus());
 
-                    // Update scan status in database
                     scan.estado = 'en_progreso';
                     scan.fecha_inicio = new Date();
                     await scan.save();
 
-                    // Start the scan
                     orchestrator.start().catch(error => {
                         console.error('Scan execution error:', error);
                         this.io.to(`scan:${scanId}`).emit('scan:error', { 
@@ -119,7 +107,6 @@ class SocketService {
                 }
             });
 
-            // Answer a question
             socket.on('question:answer', (data) => {
                 const { scanId, selectedAnswer } = data;
                 const orchestrator = this.activeScans.get(scanId);
@@ -129,7 +116,6 @@ class SocketService {
                 }
             });
 
-            // Pause scan
             socket.on('scan:pause', async (data) => {
                 const { scanId } = data;
                 const orchestrator = this.activeScans.get(scanId);
@@ -138,7 +124,6 @@ class SocketService {
                     return socket.emit('error', { message: 'Scan not found' });
                 }
 
-                // Verify scan belongs to user
                 try {
                     const scan = await Scan.findById(scanId);
                     if (!scan || scan.usuario_id.toString() !== socket.userId) {
@@ -152,7 +137,6 @@ class SocketService {
                 this.io.to(`scan:${scanId}`).emit('scan:paused', { scanId });
             });
 
-            // Resume scan
             socket.on('scan:resume', async (data) => {
                 const { scanId } = data;
                 const orchestrator = this.activeScans.get(scanId);
@@ -161,7 +145,6 @@ class SocketService {
                     return socket.emit('error', { message: 'Scan not found' });
                 }
 
-                // Verify scan belongs to user
                 try {
                     const scan = await Scan.findById(scanId);
                     if (!scan || scan.usuario_id.toString() !== socket.userId) {
@@ -175,7 +158,6 @@ class SocketService {
                 this.io.to(`scan:${scanId}`).emit('scan:resumed', { scanId });
             });
 
-            // Stop scan
             socket.on('scan:stop', async (data) => {
                 const { scanId } = data;
                 const orchestrator = this.activeScans.get(scanId);
@@ -184,14 +166,12 @@ class SocketService {
                     return socket.emit('error', { message: 'Scan not found' });
                 }
 
-                // Verify scan belongs to user
                 try {
                     const scan = await Scan.findById(scanId);
                     if (!scan || scan.usuario_id.toString() !== socket.userId) {
                         return socket.emit('error', { message: 'Unauthorized' });
                     }
 
-                    // Update scan status in database
                     scan.estado = 'detenido';
                     scan.fecha_fin = new Date();
                     await scan.save();
@@ -204,7 +184,6 @@ class SocketService {
                 this.io.to(`scan:${scanId}`).emit('scan:stopped', { scanId });
             });
 
-            // Leave scan room
             socket.on('scan:leave', (data) => {
                 const { scanId } = data;
                 socket.leave(`scan:${scanId}`);
@@ -222,7 +201,6 @@ class SocketService {
     setupOrchestratorListeners(orchestrator, scanId) {
         const room = `scan:${scanId}`;
 
-        // Phase events
         orchestrator.on('phase:started', (data) => {
             this.io.to(room).emit('phase:started', data);
         });
@@ -231,7 +209,6 @@ class SocketService {
             this.io.to(room).emit('phase:completed', data);
         });
 
-        // Subphase events
         orchestrator.on('subphase:started', (data) => {
             this.io.to(room).emit('subphase:started', data);
         });
@@ -240,12 +217,10 @@ class SocketService {
             this.io.to(room).emit('subphase:completed', data);
         });
 
-        // Log events
         orchestrator.on('log:added', (logEntry) => {
             this.io.to(room).emit('log:added', logEntry);
         });
 
-        // Discovery events
         orchestrator.on('endpoint:discovered', (endpoint) => {
             this.io.to(room).emit('endpoint:discovered', endpoint);
         });
@@ -258,7 +233,6 @@ class SocketService {
             this.io.to(room).emit('vulnerability:found', vulnerability);
         });
 
-        // Question events
         orchestrator.on('question:asked', (question) => {
             this.io.to(room).emit('question:asked', question);
         });
@@ -267,7 +241,6 @@ class SocketService {
             this.io.to(room).emit('question:result', result);
         });
 
-        // Scan pause/resume/stop events
         orchestrator.on('scan:paused', (data) => {
             this.io.to(room).emit('scan:paused', data);
         });
@@ -280,7 +253,6 @@ class SocketService {
             this.io.to(room).emit('scan:stopped', data);
         });
 
-        // Scan completion
         orchestrator.on('scan:completed', async (data) => {
             try {
                 const scan = await Scan.findById(scanId);
@@ -289,13 +261,10 @@ class SocketService {
                     return;
                 }
 
-                // Save all vulnerabilities to database
                 const savedVulnerabilityIds = await this.saveVulnerabilities(scanId, data.vulnerabilities || []);
                 
-                // Save all question answers to database
                 const savedAnswers = await this.saveQuestionAnswers(scanId, data.questionResults || []);
                 
-                // Calculate and save score
                 const quizPoints = savedAnswers.reduce((sum, ans) => sum + (ans.puntos_obtenidos || 0), 0);
                 let totalQuizPoints = 0;
                 for (const ans of savedAnswers) {
@@ -309,18 +278,16 @@ class SocketService {
                     }
                 }
                 
-                // Update scan with all data
                 scan.estado = 'finalizado';
                 scan.fecha_fin = new Date();
                 scan.vulnerabilidades = savedVulnerabilityIds;
                 scan.respuestas_usuario = savedAnswers;
                 scan.puntuacion = {
                     puntos_cuestionario: quizPoints,
-                    total_puntos_cuestionario: totalQuizPoints || 100, // Default to 100 if no questions
+                    total_puntos_cuestionario: totalQuizPoints || 100,
                     vulnerabilidades_encontradas: savedVulnerabilityIds.length
                 };
                 
-                // Calculate final score using the model method
                 scan.calculateScore();
                 
                 await scan.save();
@@ -329,7 +296,6 @@ class SocketService {
 
                 this.io.to(room).emit('scan:completed', data);
                 
-                // Clean up
                 this.activeScans.delete(scanId);
             } catch (error) {
                 console.error('Error completing scan:', error);
@@ -337,7 +303,6 @@ class SocketService {
             }
         });
 
-        // Error events
         orchestrator.on('scan:error', async (data) => {
             try {
                 const scan = await Scan.findById(scanId);
@@ -363,33 +328,23 @@ class SocketService {
         return this.activeScans.has(scanId);
     }
 
-    /**
-     * Save vulnerabilities to database
-     * @param {String} scanId - Scan ID
-     * @param {Array} vulnerabilities - Array of vulnerability objects from orchestrator
-     * @returns {Array} Array of saved vulnerability IDs
-     */
     async saveVulnerabilities(scanId, vulnerabilities) {
         const savedIds = [];
 
         for (const vuln of vulnerabilities) {
             try {
-                // Map vulnerability type (SQLi, XSS) to VulnerabilityType
                 let typeName = vuln.type;
                 if (typeName === 'SQLi') typeName = 'SQLi';
                 else if (typeName === 'XSS') typeName = 'XSS';
                 
                 let vulnerabilityType = await VulnerabilityType.findOne({ nombre: typeName });
                 if (!vulnerabilityType) {
-                    // Create if doesn't exist
                     vulnerabilityType = new VulnerabilityType({
                         nombre: typeName,
                         descripcion: `Vulnerabilidad de tipo ${typeName}`
                     });
                     await vulnerabilityType.save();
                 }
-
-                // Map severity (critical, high, medium, low) to SeverityLevel
                 const severityMap = {
                     'critical': 'Crítica',
                     'high': 'Alta',
@@ -404,7 +359,6 @@ class SocketService {
                 const severityName = severityMap[vuln.severity?.toLowerCase()] || 'Media';
                 let severityLevel = await SeverityLevel.findOne({ nombre: severityName });
                 if (!severityLevel) {
-                    // Create if doesn't exist
                     severityLevel = new SeverityLevel({
                         nombre: severityName,
                         descripcion: `Nivel de severidad ${severityName}`
@@ -412,7 +366,6 @@ class SocketService {
                     await severityLevel.save();
                 }
 
-                // Create vulnerability
                 const vulnerability = new Vulnerability({
                     escaneo_id: scanId,
                     tipo_id: vulnerabilityType._id,
@@ -434,12 +387,6 @@ class SocketService {
         return savedIds;
     }
 
-    /**
-     * Save question answers to database
-     * @param {String} scanId - Scan ID
-     * @param {Array} questionResults - Array of question result objects from orchestrator
-     * @returns {Array} Array of saved answer objects with pregunta_id, respuesta_seleccionada_id, etc.
-     */
     async saveQuestionAnswers(scanId, questionResults) {
         const savedAnswers = [];
 
@@ -448,7 +395,6 @@ class SocketService {
                 let question;
                 let savedAnswerIds = [];
                 
-                // If questionId is provided, use it directly (questions from DB)
                 if (result.questionId) {
                     question = await Question.findById(result.questionId);
                     if (!question) {
@@ -456,11 +402,9 @@ class SocketService {
                         continue;
                     }
                     
-                    // Use answerIds if provided, otherwise find by text
                     if (result.answerIds && result.answerIds.length > 0) {
                         savedAnswerIds = result.answerIds;
                     } else {
-                        // Find answers by text
                         const answerOptions = result.options || [];
                         for (const optionText of answerOptions) {
                             const answer = await Answer.findOne({ 
@@ -473,10 +417,8 @@ class SocketService {
                         }
                     }
                 } else {
-                    // Find or create question by text (backward compatibility)
                     question = await Question.findOne({ texto_pregunta: result.question });
                     if (!question) {
-                        // Determine difficulty based on points
                         let dificultad = 'facil';
                         if (result.points > 15) dificultad = 'dificil';
                         else if (result.points > 10) dificultad = 'media';
@@ -485,12 +427,11 @@ class SocketService {
                             texto_pregunta: result.question,
                             dificultad: dificultad,
                             puntos: result.points || 10,
-                            fase: result.phase || 'init' // Use phase from result or default to 'init'
+                            fase: result.phase || 'init'
                         });
                         await question.save();
                     }
 
-                    // Find or create all answer options
                     const answerOptions = result.options || [];
                     
                     for (let i = 0; i < answerOptions.length; i++) {
@@ -512,11 +453,9 @@ class SocketService {
                     }
                 }
 
-                // Get the selected answer ID
                 const selectedAnswerIndex = result.userAnswer !== undefined ? result.userAnswer : -1;
                 const respuesta_seleccionada_id = savedAnswerIds[selectedAnswerIndex] || savedAnswerIds[0];
 
-                // Create user answer entry
                 const userAnswer = {
                     pregunta_id: question._id,
                     respuesta_seleccionada_id: respuesta_seleccionada_id,
@@ -533,11 +472,6 @@ class SocketService {
         return savedAnswers;
     }
 
-    /**
-     * Get vulnerability suggestion based on type
-     * @param {String} type - Vulnerability type
-     * @returns {String} Suggestion text
-     */
     _getVulnerabilitySuggestion(type) {
         const suggestions = {
             'SQLi': 'Utilice consultas preparadas (prepared statements) o parámetros parametrizados para prevenir inyecciones SQL. Valide y sanitice toda la entrada del usuario.',
@@ -550,7 +484,6 @@ class SocketService {
     }
 }
 
-// Singleton instance
 const socketService = new SocketService();
 
 module.exports = socketService;

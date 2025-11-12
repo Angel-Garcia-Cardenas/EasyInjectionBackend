@@ -49,10 +49,10 @@ class EmailService {
 
         try {
             await this.transporter.sendMail(mailOptions);
-            console.log(`Email de verificación enviado a: ${email}`);
+            console.log(`Verification email sent to: ${email}`);
             return true;
         } catch (error) {
-            console.error('Error enviando email de verificación:', error);
+            console.error('Error sending verification email:', error);
             return false;
         }
     }
