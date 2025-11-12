@@ -1,11 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const auth = require('../middleware/auth');
+const auth = require('../middleware/auth.middleware');
 const router = express.Router();
 
 router.get('/profile', auth, async (req, res) => {
     try {
-        const { User } = require('../models/user');
+        const { User } = require('../../models/user/user.model');
         const user = await User.findById(req.user._id).select('-contrasena_hash -token_verificacion');
         
         if (!user) {
@@ -36,7 +36,7 @@ router.get('/profile', auth, async (req, res) => {
 
 router.put('/profile', auth, async (req, res) => {
     try {
-        const { User } = require('../models/user');
+        const { User } = require('../../models/user/user.model');
         const { username, email, avatarId } = req.body;
 
         if (!username || !email) {
@@ -108,7 +108,7 @@ router.put('/profile', auth, async (req, res) => {
 
 router.put('/password', auth, async (req, res) => {
     try {
-        const { User } = require('../models/user');
+        const { User } = require('../../models/user/user.model');
         const { currentPassword, newPassword } = req.body;
 
         if (!currentPassword || !newPassword) {

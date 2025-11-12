@@ -1,17 +1,46 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { User, validate } = require('../models/user');
-const emailService = require('../services/emailService');
+const { User, validate } = require('../../models/user/user.model');
+const emailService = require('../../services/email.service');
 const router = express.Router();
+
+function validatePasswordStrength(password) {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (password.length < minLength) {
+        return { valid: false, message: 'La contraseña debe tener al menos 8 caracteres' };
+    }
+    if (!hasUpperCase) {
+        return { valid: false, message: 'La contraseña debe incluir al menos una letra mayúscula' };
+    }
+    if (!hasLowerCase) {
+        return { valid: false, message: 'La contraseña debe incluir al menos una letra minúscula' };
+    }
+    if (!hasNumber) {
+        return { valid: false, message: 'La contraseña debe incluir al menos un número' };
+    }
+    if (!hasSpecialChar) {
+        return { valid: false, message: 'La contraseña debe incluir al menos un carácter especial' };
+    }
+    return { valid: true };
+}
 
 router.post('/', async (req, res) => {
     try {
-        const { error } = validate(req.body);
-        if (error) {
+        const passwordValidation = validatePasswordStrength(req.body.password);
+
+        if (!passwordValidation.valid) {
+            return res.status(400).json({ error: passwordValidation.message });
+        }
+
+        if (!req.body.acceptedTerms) {
             return res.status(400).json({ 
-                error: 'Datos de entrada inválidos',
-                details: error.details[0].message 
+                error: 'Debe aceptar los términos y condiciones y la política de privacidad para continuar' 
             });
         }
 

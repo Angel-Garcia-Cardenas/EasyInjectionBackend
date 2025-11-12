@@ -2,10 +2,10 @@ require("dotenv").config();
 const express = require('express');
 const app = express();
 const http = require('http');
-const socketService = require('./services/socketService');
+const socketService = require('./src/services/socket.service');
 
-require('./startup/db')();
-require('./startup/routes')(app);
+require('./src/config/database')();
+require('./src/config/routes')(app);
 
 const port = process.env.PORT || 3000;
 const server = http.createServer(app);

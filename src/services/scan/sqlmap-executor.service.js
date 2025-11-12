@@ -1,7 +1,3 @@
-/**
- * SQLMap executor module - handles all SQLMap-related operations
- */
-
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -27,14 +23,10 @@ class SqlmapExecutor {
             timeout: config.timeout || 30
         };
 
-        // Setup directories for crawl CSV processing
         this.tmpDir = config.tmpDir || path.join(os.tmpdir(), 'easyinjection_sqlmap_tmp');
-        this.outputDir = config.outputDir || null; // Should be passed as scan_<id> directory
+        this.outputDir = config.outputDir || null;
     }
 
-    /**
-     * Check if sqlmap is available
-     */
     async checkAvailability() {
         try {
             const result = await this.runCommand(['--version'], 5000);
@@ -50,10 +42,6 @@ class SqlmapExecutor {
         }
     }
 
-    /**
-     * Build --answers argument with all responses in CSV format
-     * @returns {string} Formatted --answers argument
-     */
     _buildAnswersArg() {
         const answers = [
             'do you want to check for the existence of site\'s sitemap(.xml)=N',
@@ -61,18 +49,10 @@ class SqlmapExecutor {
             'do you want to store crawling results to a temporary file for eventual further processing with other tools=Y',
             'Do you want to skip further tests involving it?=n'
         ];
-        // Format: --answers="answer1,answer2,answer3"
-        // Note: The quotes are included in the string so spawn treats it as a single argument
         return `--answers="${answers.join(',')}"`;
     }
 
-    /**
-     * Run sqlmap crawl to discover endpoints
-     * Detects when crawling is complete via stdout pattern matching,
-     * stops the process, and processes the generated CSV to create targets.txt
-     */
     async runCrawl() {
-        // Ensure tmp directory exists
         if (!fs.existsSync(this.tmpDir)) {
             fs.mkdirSync(this.tmpDir, { recursive: true });
         }
@@ -123,32 +103,25 @@ class SqlmapExecutor {
                 if (crawlFinished) return;
                 crawlFinished = true;
 
-                // Clear timeout
                 if (timeoutTimer) {
                     clearTimeout(timeoutTimer);
                     timeoutTimer = null;
                 }
 
                 try {
-                    // Wait longer for CSV to be written after process is killed
-                    // sqlmap needs time to flush and close the CSV file
                     await new Promise(resolve => setTimeout(resolve, 5000));
 
-                    // Find CSV file in tmp-dir
-                    // Try multiple times with increasing delays
                     let csvPath = null;
                     for (let attempt = 0; attempt < 3; attempt++) {
                         csvPath = await this.findCrawlCsv(this.tmpDir);
                         if (csvPath) {
                             break;
                         }
-                        // Wait a bit more before next attempt
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                     
                     if (!csvPath) {
                         this.logger.addLog(`⚠ No se encontró CSV de crawling en tmp-dir: ${this.tmpDir}`, 'warning');
-                        // Log directory contents for debugging
                         try {
                             const listAllFiles = (dir, fileList = []) => {
                                 const files = fs.readdirSync(dir);
@@ -178,8 +151,6 @@ class SqlmapExecutor {
 
                     console.log(`CSV encontrado: ${csvPath}`)
 
-                    // Emit crawler finished event with CSV path
-                    // The discovery phase will process the CSV to extract endpoints and parameters
                     this.emitter.emit('crawler:finished', {
                         csvPath
                     });
@@ -194,7 +165,6 @@ class SqlmapExecutor {
 
             proc.stdout.on('data', (data) => {
                 const output = data.toString();
-                // Show raw sqlmap output in console
                 process.stdout.write(`[sqlmap crawl stdout] ${output}`);
                 
                 buffer += output;
@@ -203,11 +173,8 @@ class SqlmapExecutor {
                 buffer = lines.pop() || '';
 
                 for (const line of lines) {
-                    // Ignore all sqlmap logs during crawling - not relevant to discovery phase
-                    // Only detect completion pattern
                     if (finishPattern.test(line) && !crawlFinished) {
                         this.logger.addLog('✓ Crawling completado, procesando resultados...', 'success');
-                        // Wait a bit before killing to ensure sqlmap finishes writing
                         setTimeout(() => {
                             gracefulKill(proc).then(() => {
                                 processCrawlResults();
@@ -219,11 +186,9 @@ class SqlmapExecutor {
 
             proc.stderr.on('data', (data) => {
                 const error = data.toString();
-                // Show raw sqlmap stderr in console
                 process.stderr.write(`[sqlmap crawl stderr] ${error}`);
                 
                 if (error.trim()) {
-                    // Don't send to frontend, only console
                     this.logger.addLog(`sqlmap stderr: ${error.trim()}`, 'debug', null, true);
                 }
             });
@@ -232,11 +197,9 @@ class SqlmapExecutor {
                 this.activeProcesses.delete('sqlmap-crawl');
                 
                 if (crawlFinished) {
-                    // Already processed
                     return;
                 }
 
-                // If process closed naturally, try to process results
                 if (code === 0 || code === null) {
                     await processCrawlResults();
                 } else if (!crawlFinished) {
@@ -250,7 +213,6 @@ class SqlmapExecutor {
                 reject(new Error(`Failed to start sqlmap: ${error.message}`));
             });
 
-            // Timeout fallback
             timeoutTimer = setTimeout(async () => {
                 if (this.activeProcesses.has('sqlmap-crawl') && !crawlFinished) {
                     await gracefulKill(proc);
@@ -261,10 +223,6 @@ class SqlmapExecutor {
         });
     }
     
-    /**
-     * Find crawl CSV file in tmp-dir
-     * Searches for CSV files with various patterns that sqlmap might use
-     */
     async findCrawlCsv(tmpDir) {
         try {
             if (!fs.existsSync(tmpDir)) {
@@ -274,14 +232,8 @@ class SqlmapExecutor {
 
             const files = [];
             
-            // Search recursively for CSV files with multiple patterns
-            // sqlmap can save CSV files with different naming patterns:
-            // - sqlmapcrawler-*.csv
-            // - crawler-*.csv  
-            // - *.csv (any CSV in tmp-dir)
             const searchDir = (dir, depth = 0) => {
                 try {
-                    // Limit recursion depth to avoid infinite loops
                     if (depth > 5) return;
                     
                     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -293,8 +245,6 @@ class SqlmapExecutor {
                             if (entry.isDirectory()) {
                                 searchDir(fullPath, depth + 1);
                             } else if (entry.isFile() && entry.name.endsWith('.csv')) {
-                                // Accept any CSV file that was recently modified (within last hour)
-                                // sqlmap can save CSV files with different naming patterns
                                 const stats = fs.statSync(fullPath);
                                 const oneHourAgo = Date.now() - (60 * 60 * 1000);
                                 if (stats.mtime.getTime() > oneHourAgo) {
@@ -302,7 +252,6 @@ class SqlmapExecutor {
                                 }
                             }
                         } catch (entryError) {
-                            // Skip entries we can't access
                             continue;
                         }
                     }
@@ -318,7 +267,6 @@ class SqlmapExecutor {
                 return null;
             }
 
-            // Return the most recent file
             files.sort((a, b) => b.mtime - a.mtime);
             const selectedFile = files[0].path;
             console.log(`CSV encontrado: ${selectedFile} (${files.length} archivo(s) CSV encontrado(s))`)
@@ -329,10 +277,6 @@ class SqlmapExecutor {
         }
     }
 
-    /**
-     * Process crawl CSV to extract endpoints and parameters directly
-     * Returns endpoints with their parameters and a flat list of all parameters
-     */
     async processCrawlCsvToEndpointsAndParams(csvPath) {
         try {
             if (!fs.existsSync(csvPath)) {
@@ -346,44 +290,36 @@ class SqlmapExecutor {
                 throw new Error('CSV file has no data rows');
             }
 
-            // Skip header (first line should be "URL,POST")
             const dataLines = lines.slice(1);
             const endpoints = [];
             const parameters = [];
-            const endpointMap = new Map(); // Track unique endpoints by URL+method
+            const endpointMap = new Map();
 
             for (const line of dataLines) {
-                // Split by FIRST comma only
                 const firstCommaIndex = line.indexOf(',');
                 
                 let url, method, postData;
                 
                 if (firstCommaIndex === -1) {
-                    // No comma found, treat entire line as URL (GET)
                     url = line.trim();
                     method = 'GET';
                     postData = null;
                 } else {
-                    // Split at first comma
                     url = line.substring(0, firstCommaIndex).trim();
                     postData = line.substring(firstCommaIndex + 1).trim();
                     method = postData ? 'POST' : 'GET';
                 }
 
                 if (!url) {
-                    continue; // Skip lines without URL
+                    continue;
                 }
 
-                // Extract parameters from URL
                 const urlParams = this._extractUrlParams(url);
                 
-                // Extract parameters from POST data if exists
                 const postParams = postData ? this._extractPostParams(postData) : [];
 
-                // Combine all parameters for this endpoint
                 const allParams = [...urlParams, ...postParams];
                 
-                // Create endpoint key for deduplication
                 const endpointKey = `${method}:${url}`;
                 
                 if (!endpointMap.has(endpointKey)) {
@@ -391,13 +327,12 @@ class SqlmapExecutor {
                         url,
                         method,
                         parameters: allParams,
-                        postData: postData || null // Store original POST data for targets.txt generation
+                        postData: postData || null
                     };
                     
                     endpoints.push(endpoint);
                     endpointMap.set(endpointKey, endpoint);
                     
-                    // Add all parameters to flat list
                     for (const paramName of allParams) {
                         parameters.push({
                             endpoint: url,
@@ -407,7 +342,6 @@ class SqlmapExecutor {
                         });
                     }
                 } else {
-                    // Endpoint already exists, merge parameters
                     const existingEndpoint = endpointMap.get(endpointKey);
                     for (const paramName of allParams) {
                         if (!existingEndpoint.parameters.includes(paramName)) {
@@ -420,7 +354,6 @@ class SqlmapExecutor {
                             });
                         }
                     }
-                    // Update POST data if this endpoint has POST data and the existing one doesn't
                     if (postData && !existingEndpoint.postData) {
                         existingEndpoint.postData = postData;
                     }
@@ -437,14 +370,9 @@ class SqlmapExecutor {
         }
     }
 
-    /**
-     * Process crawl CSV to get_targets.txt and post_targets.txt (legacy method - kept for compatibility)
-     * @deprecated Use processCrawlCsvToEndpointsAndParams instead
-     */
     async _processCrawlCsvToTargets(csvPath) {
         const result = await this.processCrawlCsvToEndpointsAndParams(csvPath);
         
-        // Ensure output directory exists
         const outputDir = this.outputDir || path.join(os.tmpdir(), 'easyinjection_scans');
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
@@ -457,18 +385,15 @@ class SqlmapExecutor {
             if (endpoint.method === 'GET') {
                 getTargets.push(endpoint.url);
             } else {
-                // Use original POST data from CSV if available, otherwise reconstruct from parameters
                 const postData = endpoint.postData || endpoint.parameters.map(p => `${p}=`).join('&');
                 postTargets.push(`${endpoint.url}|||${postData}`);
             }
         }
 
-        // Write get_targets.txt (create even if empty)
         const getTargetsPath = path.join(outputDir, 'get_targets.txt');
         fs.writeFileSync(getTargetsPath, getTargets.join('\n') + (getTargets.length > 0 ? '\n' : ''), 'utf-8');
         this.logger.addLog(`✓ get_targets.txt generado: ${getTargets.length} targets`, 'debug');
 
-        // Write post_targets.txt (create even if empty)
         const postTargetsPath = path.join(outputDir, 'post_targets.txt');
         fs.writeFileSync(postTargetsPath, postTargets.join('\n') + (postTargets.length > 0 ? '\n' : ''), 'utf-8');
         this.logger.addLog(`✓ post_targets.txt generado: ${postTargets.length} targets`, 'debug');
@@ -481,14 +406,6 @@ class SqlmapExecutor {
         };
     }
 
-    /**
-     * Process GET targets from get_targets.txt
-     * Executes sqlmap and dalfox for each URL
-     * @param {string} getTargetsPath - Path to get_targets.txt
-     * @param {Function} onEndpointDiscovered - Callback when endpoint is discovered
-     * @param {Function} onVulnerabilityFound - Callback when vulnerability is found
-     * @param {Object} options - Optional: { questionHandler, dalfoxExecutor }
-     */
     async processGetTargets(getTargetsPath, onEndpointDiscovered, onVulnerabilityFound, options = {}) {
         if (!fs.existsSync(getTargetsPath)) {
             this.logger.addLog(`get_targets.txt no encontrado: ${getTargetsPath}`, 'warning');
@@ -513,7 +430,6 @@ class SqlmapExecutor {
             }
 
             try {
-                // Emit endpoint discovered event
                 if (onEndpointDiscovered) {
                     onEndpointDiscovered({
                         url,
@@ -522,12 +438,10 @@ class SqlmapExecutor {
                     });
                 }
 
-                // Test with sqlmap if SQLi is enabled
                 if (this.config.flags?.sqli !== false) {
                     await this._testUrlWithSqlmap(url, null, onVulnerabilityFound, options);
                 }
 
-                // Test with dalfox if XSS is enabled
                 if (this.config.flags?.xss !== false && options.dalfoxExecutor) {
                     await options.dalfoxExecutor.scanUrl(url, onVulnerabilityFound);
                 }
@@ -537,14 +451,6 @@ class SqlmapExecutor {
         }
     }
 
-    /**
-     * Process POST targets from post_targets.txt
-     * Executes sqlmap with --data for each target
-     * @param {string} postTargetsPath - Path to post_targets.txt
-     * @param {Function} onEndpointDiscovered - Callback when endpoint is discovered
-     * @param {Function} onVulnerabilityFound - Callback when vulnerability is found
-     * @param {Object} options - Optional: { questionHandler, dalfoxExecutor }
-     */
     async processPostTargets(postTargetsPath, onEndpointDiscovered, onVulnerabilityFound, options = {}) {
         if (!fs.existsSync(postTargetsPath)) {
             this.logger.addLog(`post_targets.txt no encontrado: ${postTargetsPath}`, 'warning');
@@ -564,7 +470,6 @@ class SqlmapExecutor {
         for (const line of lines) {
             if (!line) continue;
 
-            // Parse format: <URL>|||<postdata>
             const parts = line.split('|||');
             if (parts.length < 2) {
                 this.logger.addLog(`Formato inválido en línea POST: ${line}`, 'warning');
@@ -572,7 +477,7 @@ class SqlmapExecutor {
             }
 
             const url = parts[0].trim();
-            const postData = parts.slice(1).join('|||').trim(); // Rejoin in case postdata contains |||
+            const postData = parts.slice(1).join('|||').trim();
 
             if (!url || !postData) {
                 continue;
@@ -583,7 +488,6 @@ class SqlmapExecutor {
             }
 
             try {
-                // Emit endpoint discovered event
                 if (onEndpointDiscovered) {
                     onEndpointDiscovered({
                         url,
@@ -592,22 +496,16 @@ class SqlmapExecutor {
                     });
                 }
 
-                // Test with sqlmap if SQLi is enabled
                 if (this.config.flags?.sqli !== false) {
                     await this._testUrlWithSqlmap(url, postData, onVulnerabilityFound, options);
                 }
 
-                // Dalfox POST testing is optional (requires explicit support)
-                // Skipping for now as dalfox primarily focuses on GET requests
             } catch (error) {
                 this.logger.addLog(`Error procesando POST target ${url}: ${error.message}`, 'warning');
             }
         }
     }
 
-    /**
-     * Test URL with sqlmap (GET or POST)
-     */
     async _testUrlWithSqlmap(url, postData, onVulnerabilityFound, options = {}) {
         const args = [
             '-u', url,
@@ -625,11 +523,9 @@ class SqlmapExecutor {
 
         this.logger.addLog(`Ejecutando sqlmap sobre: ${url}${postData ? ' (POST)' : ''}`, 'debug', null, true);
 
-        // Extract parameters from URL or POST data
         const params = postData ? this._extractPostParams(postData) : this._extractUrlParams(url);
 
         if (params.length === 0) {
-            // If no params found, still test the URL (sqlmap will detect all parameters)
             try {
                 const param = {
                     endpoint: url,
@@ -664,23 +560,16 @@ class SqlmapExecutor {
         }
     }
 
-    /**
-     * Extract parameters from URL query string
-     */
     _extractUrlParams(url) {
         try {
             const urlObj = new URL(url);
             return Array.from(urlObj.searchParams.keys());
         } catch {
-            // Fallback: simple regex extraction
             const match = url.match(/[?&]([^=&]+)=/g);
             return match ? match.map(p => p.slice(1, -1)) : [];
         }
     }
 
-    /**
-     * Extract parameter names from POST data
-     */
     _extractPostParams(postData) {
         const params = new Set();
         const pairs = postData.split('&');
@@ -698,16 +587,11 @@ class SqlmapExecutor {
         return Array.from(params);
     }
 
-    /**
-     * Test multiple parameters for an endpoint in a single sqlmap execution
-     * This is more efficient than testing each parameter separately
-     */
     async testEndpoint(endpoint, params, phase = 'detection', onVulnerabilityFound) {
         if (!params || params.length === 0) {
             return;
         }
 
-        // Build parameter list for sqlmap (-p param1,param2,param3)
         const paramNames = params.map(p => p.name).join(',');
         
         const args = [
@@ -722,7 +606,6 @@ class SqlmapExecutor {
         this._addDbmsAndHeaders(args);
 
         if (phase === 'detection') {
-            // args.push('--technique', 'B');
         }
 
         if (phase === 'fingerprint') {
@@ -745,11 +628,10 @@ class SqlmapExecutor {
             this.activeProcesses.set(processKey, proc);
 
             let buffer = '';
-            const foundVulnerabilities = new Map(); // Track by parameter name
+            const foundVulnerabilities = new Map();
 
             proc.stdout.on('data', (data) => {
                 const output = data.toString();
-                // Show raw sqlmap output in console
                 process.stdout.write(`[sqlmap stdout] ${output}`);
                 
                 buffer += output;
@@ -758,13 +640,10 @@ class SqlmapExecutor {
                 buffer = lines.pop() || '';
 
                 for (const line of lines) {
-                    // Parse output for each parameter
                     for (const param of params) {
                         this._parseTestOutput(line, param, phase);
 
-                        // Check if this line indicates vulnerability for this parameter
                         if (line.match(/vulnerable|injectable|injection point/i)) {
-                            // Check if this line mentions the parameter name
                             const paramMentioned = line.includes(param.name) || 
                                                    line.match(new RegExp(`Parameter:.*${param.name}`, 'i')) ||
                                                    line.match(new RegExp(`\\[CRITICAL\\].*${param.name}`, 'i'));
@@ -791,11 +670,9 @@ class SqlmapExecutor {
 
             proc.stderr.on('data', (data) => {
                 const error = data.toString();
-                // Show raw sqlmap stderr in console
                 process.stderr.write(`[sqlmap stderr] ${error}`);
                 
                 if (error.trim()) {
-                    // Don't send to frontend, only console
                     this.logger.addLog(`sqlmap: ${error.trim()}`, 'debug', null, true);
                 }
             });
@@ -822,9 +699,6 @@ class SqlmapExecutor {
         });
     }
 
-    /**
-     * Test a parameter for SQL injection
-     */
     async testParameter(param, phase = 'detection', onVulnerabilityFound) {
         const args = [
             '-u', param.endpoint,
@@ -838,7 +712,6 @@ class SqlmapExecutor {
         this._addDbmsAndHeaders(args);
 
         if (phase === 'detection') {
-            // args.push('--technique', 'B');
         }
 
         if (phase === 'fingerprint') {
@@ -864,7 +737,6 @@ class SqlmapExecutor {
 
             proc.stdout.on('data', (data) => {
                 const output = data.toString();
-                // Show raw sqlmap output in console
                 process.stdout.write(`[sqlmap stdout] ${output}`);
                 
                 buffer += output;
@@ -878,7 +750,6 @@ class SqlmapExecutor {
                     if (line.match(/vulnerable|injectable|injection point/i) && !vulnerabilityFound) {
                         vulnerabilityFound = true;
 
-                        // All SQLi vulnerabilities are critical by default
                         let severity = 'critical';
                         if (line.match(/time-based|stacked queries/i)) {
                             severity = 'critical';
@@ -901,11 +772,9 @@ class SqlmapExecutor {
 
             proc.stderr.on('data', (data) => {
                 const error = data.toString();
-                // Show raw sqlmap stderr in console
                 process.stderr.write(`[sqlmap stderr] ${error}`);
                 
                 if (error.trim()) {
-                    // Don't send to frontend, only console
                     this.logger.addLog(`sqlmap: ${error.trim()}`, 'debug', null, true);
                 }
             });
@@ -931,14 +800,10 @@ class SqlmapExecutor {
         });
     }
 
-    /**
-     * Parse test output
-     */
     _parseTestOutput(line, param, phase) {
         const trimmed = line.trim();
         if (!trimmed) return;
 
-        // Filter out sqlmap banner and ASCII art
         if (trimmed.match(/^[_\-\|\[\]H\s]+$/) || 
             trimmed.match(/^[_\-\|\[\]H]+$/) ||
             trimmed.match(/^\{1\.\d+\.\d+\.\d+/) ||
@@ -969,7 +834,6 @@ class SqlmapExecutor {
             trimmed.match(/^\[1\] place:/i) ||
             trimmed.match(/^\[q\] Quit/i) ||
             trimmed.match(/^\[.*\] INFO\] resuming back-end DBMS/i)) {
-            // Skip banner and interactive prompts
             return;
         }
 
@@ -986,9 +850,6 @@ class SqlmapExecutor {
         }
     }
 
-    /**
-     * Add DBMS and headers to args array
-     */
     _addDbmsAndHeaders(args) {
         if (this.config.dbms) {
             args.push('--dbms', this.config.dbms);
@@ -1006,45 +867,31 @@ class SqlmapExecutor {
         const spawnOpts = { shell: false };
         const isBare = !/[\\/]/.test(String(toolPath));
       
-        // If toolPath is a bare command (no slashes) and we're on Windows, allow shell to resolve PATHEXT
         if (process.platform === 'win32' && isBare) {
           spawnOpts.shell = true;
           return { executable: toolPath, args, spawnOpts };
         }
       
-        // If the path exists on disk, detect extension
         if (fs.existsSync(toolPath)) {
           const ext = path.extname(String(toolPath)).toLowerCase();
           if (ext === '.py') {
-            // Prefer Python launcher on Windows (py), otherwise python
             const pythonCmd = process.platform === 'win32' ? 'py' : 'python';
             return { executable: pythonCmd, args: [toolPath, ...args], spawnOpts };
           } else {
-            // Binary or script with executable bit
             return { executable: toolPath, args, spawnOpts };
           }
         }
       
-        // Fallback: toolPath doesn't exist as file — assume it's a command in PATH
         if (process.platform === 'win32' && isBare) spawnOpts.shell = true;
         return { executable: toolPath, args, spawnOpts };
     }
 
-    /**
-     * Run a command with timeout (for version checks).
-     * Returns { stdout, stderr } on success,
-     * rejects with object { message, stdout, stderr } on error.
-     *
-     * Signature: runCommand(args, timeout = 30000, opts = {})
-     * opts: { autoRespond?: boolean, autoRespondRegex?: RegExp, useShellFallback?: boolean }
-     */
     async runCommand(args, timeout = 30000, opts = {}) {
         return new Promise((resolve, reject) => {
         const autoRespond = (typeof opts.autoRespond === 'boolean') ? opts.autoRespond : true;
         const autoRespondRegex = opts.autoRespondRegex || /press\s+(enter|any key|return)\b/i;
         const useShellFallback = (typeof opts.useShellFallback === 'boolean') ? opts.useShellFallback : true;
     
-        // normalize executable/args using helper
         const { executable, args: finalArgs, spawnOpts } = this.getSpawnCommandForTool(this.toolConfig.path, Array.isArray(args) ? args.slice() : []);
     
         this.logger.addLog(`Ejecutando comando: ${executable} ${finalArgs.join(' ')}`, 'debug', null, true);
@@ -1097,9 +944,7 @@ class SqlmapExecutor {
             return resolve({ stdout, stderr });
             }
     
-            // Attempt shell fallback if configured and not already using shell
             if (useShellFallback && !spawnOpts.shell) {
-            // build safe shell command string
             const safeArgs = finalArgs.map(a => typeof a === 'string' && a.includes(' ') ? `"${a}"` : a).join(' ');
             const shellCmd = `${executable} ${safeArgs}`;
             this.logger.addLog(`Fallback ejecutando en shell: ${shellCmd}`, 'debug');

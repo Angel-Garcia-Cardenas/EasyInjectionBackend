@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
-const { User } = require('../models/user');
-const emailService = require('../services/emailService');
+const { User } = require('../../models/user/user.model');
+const emailService = require('../../services/email.service');
 const router = express.Router();
 
 router.post('/', async (req, res) => {

@@ -1,24 +1,16 @@
-/**
- * ScanOrchestrator - Orchestrates security scans using sqlmap and Dalfox
- * 
- * This is a modular orchestrator that coordinates different scanning phases.
- * See individual modules in orchestrator/ directory for implementation details.
- */
-
 const EventEmitter = require('events');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-// Import modules
-const { validateAndNormalizeConfig } = require('./orchestrator/configValidator');
-const Logger = require('./orchestrator/logger');
-const QuestionHandler = require('./orchestrator/questionHandler');
-const SqlmapExecutor = require('./orchestrator/sqlmapExecutor');
-const DalfoxExecutor = require('./orchestrator/dalfoxExecutor');
-const DiscoveryPhase = require('./orchestrator/phases/discoveryPhase');
-const SQLiPhase = require('./orchestrator/phases/sqliPhase');
-const XSSPhase = require('./orchestrator/phases/xssPhase');
+const { validateAndNormalizeConfig } = require('./config-validator.service');
+const Logger = require('./logger.service');
+const QuestionHandler = require('./question-handler.service');
+const SqlmapExecutor = require('./sqlmap-executor.service');
+const DalfoxExecutor = require('./dalfox-executor.service');
+const DiscoveryPhase = require('../phases/discovery.phase');
+const SQLiPhase = require('../phases/sqli.phase');
+const XSSPhase = require('../phases/xss.phase');
 
 class ScanOrchestrator extends EventEmitter {
     constructor(scanId, scanConfig) {

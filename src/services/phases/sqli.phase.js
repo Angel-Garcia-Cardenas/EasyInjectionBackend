@@ -1,7 +1,3 @@
-/**
- * SQL Injection Phase - Test for SQLi vulnerabilities
- */
-
 class SQLiPhase {
     constructor(config, sqlmapExecutor, logger, questionHandler, discoveredParameters, vulnerabilities, stats, emitter) {
         this.config = config;
@@ -15,16 +11,9 @@ class SQLiPhase {
     }
 
     async run() {
-        // Subphase 1: Detection
         await this.runSubphase('detection');
-
-        // Subphase 2: Fingerprinting
         await this.runSubphase('fingerprint');
-
-        // Subphase 3: Technique Selection
         await this.runSubphase('technique');
-
-        // Subphase 4: Exploitation (POC only)
         await this.runSubphase('exploit');
     }
 
@@ -56,7 +45,6 @@ class SQLiPhase {
             name: subphase.name 
         });
         
-        // Reset to parent phase
         this.logger.setCurrentPhase('sqli');
     }
 
@@ -74,7 +62,6 @@ class SQLiPhase {
             return;
         }
 
-        // Group parameters by endpoint
         const paramsByEndpoint = new Map();
         for (const param of testableParams) {
             if (!paramsByEndpoint.has(param.endpoint)) {
@@ -85,7 +72,6 @@ class SQLiPhase {
 
         this.logger.addLog(`Testeando SQLi en ${paramsByEndpoint.size} endpoint(s) con ${testableParams.length} parámetro(s) total`, 'info');
 
-        // Execute sqlmap once per endpoint with all its parameters
         for (const [endpoint, params] of paramsByEndpoint.entries()) {
             await this.questionHandler.waitIfPaused();
             

@@ -1,7 +1,3 @@
-/**
- * XSS Phase - Test for Cross-Site Scripting vulnerabilities
- */
-
 class XSSPhase {
     constructor(config, dalfoxExecutor, logger, questionHandler, discoveredParameters, vulnerabilities, stats, emitter) {
         this.config = config;
@@ -47,7 +43,6 @@ class XSSPhase {
             name: subphase.name 
         });
         
-        // Reset to parent phase
         this.logger.setCurrentPhase('xss');
     }
 
@@ -95,7 +90,6 @@ class XSSPhase {
                 
                 try {
                     await this.dalfoxExecutor.scanUrl(param.endpoint, (vuln) => {
-                        // Log parsed vulnerability information
                         this.logger.addLog(`[XSS] Vulnerabilidad detectada:`, 'info');
                         this.logger.addLog(`  - Endpoint: ${vuln.endpoint}`, 'info');
                         this.logger.addLog(`  - Parámetro: ${vuln.parameter}`, 'info');
@@ -112,7 +106,6 @@ class XSSPhase {
     }
 
     addVulnerability(vuln) {
-        // Check if not already reported
         if (!this.vulnerabilities.some(v => 
             v.endpoint === vuln.endpoint && 
             v.parameter === vuln.parameter &&

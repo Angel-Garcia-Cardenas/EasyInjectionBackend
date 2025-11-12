@@ -1,9 +1,9 @@
 const express = require('express');
-const auth = require('../middleware/auth');
-const { Scan } = require('../models/scan');
-const { Vulnerability } = require('../models/vulnerability');
-const { VulnerabilityType } = require('../models/vulnerability_type');
-const { SeverityLevel } = require('../models/severity_level');
+const auth = require('../middleware/auth.middleware');
+const { Scan } = require('../../models/scan/scan.model');
+const { Vulnerability } = require('../../models/scan/vulnerability.model');
+const { VulnerabilityType } = require('../../models/catalog/vulnerability-type.model');
+const { SeverityLevel } = require('../../models/catalog/severity-level.model');
 const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
@@ -90,8 +90,8 @@ router.get('/:id', auth, async (req, res) => {
 
 router.get('/:id/report', auth, async (req, res) => {
     try {
-        const { Question } = require('../models/question');
-        const { Answer } = require('../models/answer');
+        const { Question } = require('../../models/quiz/question.model');
+        const { Answer } = require('../../models/quiz/answer.model');
 
         const scan = await Scan.findOne({ 
             _id: req.params.id, 

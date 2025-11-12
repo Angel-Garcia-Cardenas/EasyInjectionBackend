@@ -1,5 +1,5 @@
-const { Question } = require('../../models/question');
-const { Answer } = require('../../models/answer');
+const { Question } = require('../../models/quiz/question.model');
+const { Answer } = require('../../models/quiz/answer.model');
 
 class QuestionHandler {
     constructor(emitter, logger) {

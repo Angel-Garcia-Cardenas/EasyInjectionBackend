@@ -1,11 +1,11 @@
 const socketIO = require('socket.io');
-const ScanOrchestrator = require('./scanOrchestrator');
-const { Scan } = require('../models/scan');
-const { Vulnerability } = require('../models/vulnerability');
-const { VulnerabilityType } = require('../models/vulnerability_type');
-const { SeverityLevel } = require('../models/severity_level');
-const { Question } = require('../models/question');
-const { Answer } = require('../models/answer');
+const ScanOrchestrator = require('./scan/scan-orchestrator.service');
+const { Scan } = require('../models/scan/scan.model');
+const { Vulnerability } = require('../models/scan/vulnerability.model');
+const { VulnerabilityType } = require('../models/catalog/vulnerability-type.model');
+const { SeverityLevel } = require('../models/catalog/severity-level.model');
+const { Question } = require('../models/quiz/question.model');
+const { Answer } = require('../models/quiz/answer.model');
 const jwt = require('jsonwebtoken');
 const config = require('config');
 
