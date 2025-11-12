@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/", auth, async (req, res) => {
   try {
-    const activities = await Activity.find({ user_id: req.user.id })
+    const activities = await Activity.find({ user_id: req.user._id })
       .sort({ date: -1 })
       .limit(10);
     res.json(activities);
@@ -17,17 +17,14 @@ router.get("/", auth, async (req, res) => {
 
 router.put("/:id/read", auth, async (req, res) => {
   try {
-    const activity = await Activity.findOne(
-      { _id: req.params.id, user_id: req.user.id },
+    const activity = await Activity.findOneAndUpdate(
+      { _id: req.params.id, user_id: req.user._id },
       { read: true },
       { new: true }
     );
     if (!activity) {
       return res.status(404).json({ error: "Actividad no encontrada" });
     }
-
-    activity.read = true;
-    await activity.save();
     res.json({ message: "Actividad marcada como leída" });
   } catch (error) {
     console.error("Error updating activity:", error);

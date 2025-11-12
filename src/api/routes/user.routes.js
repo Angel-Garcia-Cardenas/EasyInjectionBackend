@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const auth = require('../middleware/auth.middleware');
+const { User } = require('../../models/user/user.model');
 const router = express.Router();
 
 router.get('/profile', auth, async (req, res) => {

@@ -15,8 +15,17 @@ router.post("/request", async (req, res) => {
         .status(404)
         .json({ error: "No existe una cuenta con ese correo electrónico" });
     }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = Date.now() + 3600000;
+    await user.save();
+
+    await emailService.sendPasswordResetEmail(user.email, user.username, resetToken);
+
+    res.json({ message: "Se ha enviado un correo con las instrucciones para restablecer tu contraseña" });
   } catch (err) {
-    console.error("Password reset  request error:", err);
+    console.error("Password reset request error:", err);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -45,7 +54,7 @@ router.post("/reset/:token", async (req, res) => {
 
     res.json({ message: "Tu contraseña ha sido restablecida exitosamente" });
   } catch (err) {
-    console.error("Password reset error:", error);
+    console.error("Password reset error:", err);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });

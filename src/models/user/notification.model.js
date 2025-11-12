@@ -12,7 +12,7 @@ const notificationSchema = new Schema({
         enum: ["scan_completed", "vulnerability_detected", "resource_available"],
         required: true
     },
-    titile: {
+    title: {
         type: String,
         required: true
     },
@@ -33,4 +33,6 @@ const notificationSchema = new Schema({
     }
 })
 
-module.exports = mongoose.model("Notification", notificationSchema);
+const Notification = mongoose.model("Notification", notificationSchema);
+
+module.exports = { Notification };
