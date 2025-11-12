@@ -121,6 +121,17 @@ const userSchema = new mongoose.Schema({
     passwordResetExpires: {
         type: Date,
     },
+    activeSessions: [{
+        token: String,
+        device: String,
+        browser: String,
+        location: String,
+        ip: String,
+        lastActivity: {
+            type: Date,
+            default: Date.now
+        }
+    }],
 
     perfil: profileSchema,
     notificaciones: [notificationSchema],
