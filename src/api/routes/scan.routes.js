@@ -402,4 +402,59 @@ router.get('/:id/status', auth, async (req, res) => {
     }
 });
 
+router.get('/search', auth, async (req, res) => {
+  try {
+    const { query, status, dateFrom, dateTo } = req.query;
+    
+    let filter = { usuario_id: req.user._id };
+    
+    if (query) {
+      filter.alias = { $regex: query, $options: 'i' };
+    }
+    
+    if (status) {
+      filter.estado = status;
+    }
+    
+    if (dateFrom || dateTo) {
+      filter.fecha_inicio = {};
+      if (dateFrom) filter.fecha_inicio.$gte = new Date(dateFrom);
+      if (dateTo) filter.fecha_inicio.$lte = new Date(dateTo);
+    }
+    
+    const scans = await Scan.find(filter)
+      .sort({ fecha_inicio: -1 })
+      .populate('tipo_autenticacion')
+      .populate('gestor');
+    
+    res.json(scans);
+  } catch (error) {
+    console.error('Search scans error:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.get('/scoreboard', auth, async (req, res) => {
+  try {
+    const scans = await Scan.find({ 
+      usuario_id: req.user._id,
+      estado: 'finalizado'
+    })
+    .sort({ puntuacion_final: -1 })
+    .select('alias puntuacion_final vulnerabilidades_encontradas fecha_fin');
+    
+    if (scans.length === 0) {
+      return res.json({ 
+        message: 'Aún no has realizado ningún escaneo',
+        scans: []
+      });
+    }
+    
+    res.json({ scans });
+  } catch (error) {
+    console.error('Get scoreboard error:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 module.exports = router;
