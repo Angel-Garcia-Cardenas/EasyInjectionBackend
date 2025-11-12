@@ -278,7 +278,7 @@ router.delete('/account', auth, async (req, res) => {
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
-  }
+    }
 });
 
 module.exports = router;

@@ -5,18 +5,18 @@ const { User } = require('../models/user/user.model');
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/auth/google/callback'
     },
     async (accessToken, refreshToken, profile, done) => {
-      try {
+    try {
         let user = await User.findOne({ googleId: profile.id });
 
         if (user) {
           user.ultimo_login = new Date();
-          await user.save();
-          return done(null, user);
+            await user.save();
+            return done(null, user);
         }
 
         user = await User.findOne({ email: profile.emails[0].value });
@@ -27,7 +27,7 @@ passport.use(
           user.estado_cuenta = 'activo';
           user.ultimo_login = new Date();
           await user.save();
-          return done(null, user);
+        return done(null, user);
         }
 
         const newUser = new User({
@@ -45,10 +45,10 @@ passport.use(
 
         await newUser.save();
         return done(null, newUser);
-      } catch (error) {
+    } catch (error) {
         console.error('Google OAuth error:', error);
         return done(error, null);
-      }
+    }
     }
   )
 );
