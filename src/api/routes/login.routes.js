@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
         user.ultimo_login = new Date();
         
         const token = user.generateAuthToken();
-        const sessionData = createSesstionData(req, token);
+        const sessionData = createSessionData(req, token);
 
         if (!user.activeSessions) {
             user.activeSessions = [];
