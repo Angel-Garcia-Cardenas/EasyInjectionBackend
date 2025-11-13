@@ -7,27 +7,27 @@ const notificationSchema = new Schema({
         ref: "User",
         required: true
     },
-    type: {
+    tipo: {
         type: String,
         enum: ["scan_completed", "vulnerability_detected", "resource_available"],
         required: true
     },
-    title: {
+    titulo: {
         type: String,
         required: true
     },
-    message: {
+    mensaje: {
         type: String,
         required: true
     },
     relatedId: {
         type: Schema.Types.ObjectId,
     },
-    read: {
+    leido: {
         type: Boolean,
         default: false
     },
-    createdAt: {
+    fecha: {
         type: Date,
         default: Date.now
     }

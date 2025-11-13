@@ -1,11 +1,13 @@
 const socketIO = require('socket.io');
 const ScanOrchestrator = require('./scan/scan-orchestrator.service');
 const { Scan } = require('../models/scan/scan.model');
+const { User } = require('../models/user/user.model');
 const { Vulnerability } = require('../models/scan/vulnerability.model');
 const { VulnerabilityType } = require('../models/catalog/vulnerability-type.model');
 const { SeverityLevel } = require('../models/catalog/severity-level.model');
 const { Question } = require('../models/quiz/question.model');
 const { Answer } = require('../models/quiz/answer.model');
+const { Notification } = require('../models/user/notification.model');
 const jwt = require('jsonwebtoken');
 const config = require('config');
 
@@ -293,6 +295,22 @@ class SocketService {
                 await scan.save();
 
                 console.log(`Scan ${scanId} completed and saved. Score: ${scan.puntuacion.puntuacion_final}, Grade: ${scan.puntuacion.calificacion}`);
+
+                // Create notification for scan completion
+                try {
+                    const notification = new Notification({
+                        user_id: scan.usuario_id,
+                        tipo: 'scan_completed',
+                        titulo: 'Escaneo completado',
+                        mensaje: `Tu escaneo "${scan.alias}" ha finalizado con una puntuación de ${scan.puntuacion.puntuacion_final}`,
+                        relatedId: scan._id,
+                        leido: false
+                    });
+                    await notification.save();
+                    console.log(`Notification created for scan ${scanId} completion`);
+                } catch (notifError) {
+                    console.error('Error creating notification:', notifError);
+                }
 
                 this.io.to(room).emit('scan:completed', data);
                 

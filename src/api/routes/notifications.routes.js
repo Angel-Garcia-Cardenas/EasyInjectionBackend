@@ -20,7 +20,7 @@ router.get('/unread-count', auth, async (req, res) => {
   try {
     const count = await Notification.countDocuments({ 
       user_id: req.user._id, 
-      read: false 
+      leido: false 
     });
     res.json({ count });
   } catch (error) {
@@ -33,7 +33,7 @@ router.put('/:id/read', auth, async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, user_id: req.user._id },
-      { read: true },
+      { leido: true },
       { new: true }
     );
     res.json(notification);
@@ -43,11 +43,11 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-router.put('/mark-all-read', auth, async (req, res) => {
+router.post('/mark-all-read', auth, async (req, res) => {
   try {
     await Notification.updateMany(
-      { user_id: req.user._id, read: false },
-      { read: true }
+      { user_id: req.user._id, leido: false },
+      { leido: true }
     );
     res.json({ message: 'Todas las notificaciones marcadas como leídas' });
   } catch (error) {

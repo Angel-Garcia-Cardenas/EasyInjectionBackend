@@ -3,34 +3,6 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
-const notificationSchema = new mongoose.Schema({
-    titulo: { 
-        type: String, 
-        maxlength: 100, 
-        required: true 
-    },
-    mensaje: { 
-        type: String, 
-        required: true 
-    },
-    leida: { 
-        type: Boolean, 
-        default: false
-    },
-    fecha_creacion: { 
-        type: Date, 
-        default: Date.now 
-    },
-    acceptedTerms: {
-        type: Boolean,
-        required: true,
-        default: false
-    },
-    acceptedTermsDate: {
-        type: Date
-    }
-});
-
 const historySchema = new mongoose.Schema({
     pregunta_id: { 
         type: mongoose.Schema.Types.ObjectId, 
@@ -121,6 +93,14 @@ const userSchema = new mongoose.Schema({
     passwordResetExpires: {
         type: Date,
     },
+    acceptedTerms: {
+        type: Boolean,
+        required: true,
+        default: false
+    },
+    acceptedTermsDate: {
+        type: Date
+    },
     activeSessions: [{
         token: String,
         device: String,
@@ -134,7 +114,6 @@ const userSchema = new mongoose.Schema({
     }],
 
     perfil: profileSchema,
-    notificaciones: [notificationSchema],
     historial_respuestas: [historySchema]
 });
 
