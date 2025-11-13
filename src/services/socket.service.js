@@ -312,6 +312,22 @@ class SocketService {
                     console.error('Error creating notification:', notifError);
                 }
 
+                try {
+                    const { Activity } = require('../models/user/activity.model');
+                    const activity = new Activity({
+                        user_id: scan.usuario_id,
+                        type: 'scan_completed',
+                        title: 'Escaneo completado',
+                        description: `El escaneo "${scan.alias}" ha finalizado con una puntuación de ${scan.puntuacion.puntuacion_final}`,
+                        relatedId: scan._id,
+                        read: false
+                    });
+                    await activity.save();
+                    console.log(`Activity log created for scan ${scanId} completion`);
+                } catch (activityError) {
+                    console.error('Error creating activity log:', activityError);
+                }
+
                 this.io.to(room).emit('scan:completed', data);
                 
                 this.activeScans.delete(scanId);
