@@ -29,6 +29,14 @@ module.exports = async function (req, res, next) {
             });
         }
 
+        if (user.activeSessions && user.activeSessions.length > 0) {
+            const sessionIndex = user.activeSessions.findIndex(s => s.token === token);
+            if (sessionIndex !== -1) {
+                user.activeSessions[sessionIndex].lastActivity = new Date().toISOString();
+                await user.save();
+            }
+        }
+
         req.user = decoded;
         next();
     } catch (ex) {

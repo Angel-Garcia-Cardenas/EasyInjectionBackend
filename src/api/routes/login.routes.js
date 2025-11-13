@@ -3,6 +3,8 @@ const bcrypt = require('bcrypt');
 const { User } = require('../../models/user/user.model');
 const router = express.Router();
 
+const { createSessionData } = require('../middleware/session-tracker.middleware');
+
 router.post('/', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -40,9 +42,19 @@ router.post('/', async (req, res) => {
         }
 
         user.ultimo_login = new Date();
-        await user.save();
-
+        
         const token = user.generateAuthToken();
+        const sessionData = createSesstionData(req, token);
+
+        if (!user.activeSessions) {
+            user.activeSessions = [];
+        }
+        user.activeSessions.push(sessionData);
+        if (user.activeSessions.length > 5) {
+            user.activeSessions = user.activeSessions.slice(-5);
+        }
+        
+        await user.save();
 
         res.json({
             message: 'Login exitoso',
