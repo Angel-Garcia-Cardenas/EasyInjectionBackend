@@ -59,43 +59,21 @@ class EmailService {
     }
   }
 
-  async sendPasswordResetEmail(email, username, resetToken) {
-    const resetUrl = `${config.get(
-      "baseUrlFrontend"
-    )}reset-password/${resetToken}`;
-
+  async sendEmail({ to, subject, html }) {
     const mailOptions = {
       from: config.get("email.user"),
-      to: email,
-      subject: "Restablece tu contraseña - EasyInjection",
-      html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Restablece tu contraseña</h2>
-        <p>Hola <strong>${username}</strong>,</p>
-        <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el siguiente enlace:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" 
-             style="background-color: #D63D6C; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-            Restablecer Contraseña
-          </a>
-        </div>
-        
-        <p>O copia y pega este enlace en tu navegador:</p>
-        <p style="word-break: break-all; color: #007bff;">${resetUrl}</p>
-        
-        <p>Este enlace expirará en 1 hora por seguridad.</p>
-        <p>Si no solicitaste restablecer tu contraseña, ignora este correo.</p>
-      </div>
-    `,
+      to,
+      subject,
+      html,
     };
 
     try {
       await this.transporter.sendMail(mailOptions);
+      console.log(`Email sent to: ${to}`);
       return true;
     } catch (error) {
-      console.error("Error sending password reset email:", error);
-      return false;
+      console.error("Error sending email:", error);
+      throw error;
     }
   }
 }
