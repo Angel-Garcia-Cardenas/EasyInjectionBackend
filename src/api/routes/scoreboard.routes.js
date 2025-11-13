@@ -1,7 +1,7 @@
 const express = require("express");
-const auth = require("../../middleware/auth.middleware");
-const { User } = require("../../models/user.model");
-const { Scan } = require("../../models/scan.model");
+const auth = require("../middleware/auth.middleware");
+const { User } = require("../../models/user/user.model");
+const { Scan } = require("../../models/scan/scan.model");
 
 const router = express.Router();
 
