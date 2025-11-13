@@ -11,6 +11,7 @@ const passwordRecovery = require('../api/routes/password-recovery.routes');
 const activity = require('../api/routes/activity.routes');
 const notifications = require('../api/routes/notifications.routes');
 const sessions = require('../api/routes/sessions.routes');
+const scoreboard = require('../api/routes/scoreboard.routes');
 
 module.exports = function(app) {
     app.use(cors());
@@ -25,6 +26,7 @@ module.exports = function(app) {
     app.use('/api/auth', auth);
     app.use('/api/user', user);
     app.use('/api/scans', scans);
+    app.use('/api/scoreboard', scoreboard);
     app.use(error);
 }
 
