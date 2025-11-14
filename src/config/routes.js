@@ -12,6 +12,7 @@ const notifications = require('../api/routes/notifications.routes');
 const sessions = require('../api/routes/sessions.routes');
 const scoreboard = require('../api/routes/scoreboard.routes');
 const passwordReset = require('../api/routes/password-reset.routes');
+const lessonProgress = require('../api/routes/lessonProgress.routes');
 
 module.exports = function(app) {
     app.use(cors());
@@ -27,6 +28,7 @@ module.exports = function(app) {
     app.use('/api/user', user);
     app.use('/api/scans', scans);
     app.use('/api/scoreboard', scoreboard);
+    app.use('/api/lessons', lessonProgress);
     app.use(error);
 }
 

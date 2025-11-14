@@ -1,7 +1,3 @@
-/**
- * Dalfox executor module - handles all Dalfox XSS scanning operations
- */
-
 const { spawn } = require('child_process');
 
 class DalfoxExecutor {
@@ -20,9 +16,6 @@ class DalfoxExecutor {
         };
     }
 
-    /**
-     * Check if dalfox is available
-     */
     async checkAvailability() {
         try {
             await this.runCommand(['version'], 5000);
@@ -36,9 +29,6 @@ class DalfoxExecutor {
         }
     }
 
-    /**
-     * Run Dalfox scan on a URL
-     */
     async scanUrl(url, onVulnerabilityFound) {
         const args = [
             'url',
@@ -51,14 +41,12 @@ class DalfoxExecutor {
             args.push('--delay', this.toolConfig.delay.toString());
         }
 
-        // Add custom headers (object format - legacy)
         if (this.config.headers) {
             for (const [key, value] of Object.entries(this.config.headers)) {
                 args.push('--header', `${key}: ${value}`);
             }
         }
 
-        // Add custom headers (string format - new)
         if (this.config.customHeaders) {
             const headers = this.config.customHeaders.split('\n').filter(h => h.trim());
             headers.forEach(header => {
@@ -67,7 +55,6 @@ class DalfoxExecutor {
         }
 
         this.logger.addLog(`Ejecutando: dalfox ${args.join(' ')}`, 'debug', null, true);
-        // Debugging: log the exact command and args
         console.log('[dalfox] scanUrl: ejecutando dalfox con args:', args.join(' '));
 
         return new Promise((resolve) => {
@@ -76,18 +63,16 @@ class DalfoxExecutor {
             this.activeProcesses.set(processKey, proc);
 
             let jsonBuffer = '';
-            let processedVulnerabilities = new Set(); // Track processed to avoid duplicates
+            let processedVulnerabilities = new Set();
 
-            let streamBuffer = ''; // buffer que mantiene lo que falta por procesar
+            let streamBuffer = '';
 
             proc.stdout.on('data', (data) => {
                 const chunk = data.toString();
-                // Show raw dalfox output in console
                 process.stdout.write(`[dalfox stdout] ${chunk}`);
                 console.log('[dalfox] stdout raw chunk:', chunk.replace(/\n/g,'\\n'));
                 streamBuffer += chunk;
 
-                // Extraer todos los objetos JSON completos del buffer usando conteo de llaves
                 const objects = [];
                 let depth = 0;
                 let startIdx = -1;
@@ -99,7 +84,6 @@ class DalfoxExecutor {
                     } else if (ch === '}') {
                         depth--;
                         if (depth === 0 && startIdx !== -1) {
-                            // extraer objeto desde startIdx hasta i (inclusive)
                             const objStr = streamBuffer.slice(startIdx, i + 1);
                             objects.push(objStr);
                             startIdx = -1;
@@ -107,9 +91,7 @@ class DalfoxExecutor {
                     }
                 }
 
-                // Remover del buffer la porción procesada (todo hasta el último '}' procesado)
                 if (objects.length > 0) {
-                    // Encontrar la última posición de '}' procesada
                     const lastObj = objects[objects.length - 1];
                     const lastPos = streamBuffer.indexOf(lastObj) + lastObj.length;
                     streamBuffer = streamBuffer.slice(lastPos);
@@ -117,14 +99,12 @@ class DalfoxExecutor {
 
                 console.log('[dalfox] extracted JSON objects count =', objects.length, 'remaining buffer length=', streamBuffer.length);
 
-                // Procesar cada objeto JSON extraído
                 for (const [i, objText] of objects.entries()) {
                     const trimmed = objText.trim();
                     console.log(`[dalfox] processing extracted object ${i}:`, trimmed.substring(0,200));
                     try {
                         const result = JSON.parse(trimmed);
                         console.log('[dalfox] parsed JSON result:', result.type, Object.keys(result || {}));
-                        // mantén tu lógica existente: filtrar por tipos y llamar a _parseOutput
                         if (result.type === 'V' || result.type === 'POC' || result.type === 'VULN') {
                             const vulnKey = `${result.param || 'unknown'}-${result.payload || 'unknown'}`;
                             if (!processedVulnerabilities.has(vulnKey)) {
@@ -139,7 +119,6 @@ class DalfoxExecutor {
                         }
                     } catch (parseErr) {
                         console.log('[dalfox] ERROR parsing extracted JSON object (should be unlikely):', parseErr.message);
-                        // opcional: log completo para depuración
                         console.log('[dalfox] bad object text:', objText.substring(0,1000));
                     }
                 }
@@ -148,32 +127,25 @@ class DalfoxExecutor {
             proc.stderr.on('data', (data) => {
                 const error = data.toString();
                 
-                // Show raw dalfox stderr in console
                 process.stderr.write(`[dalfox stderr] ${error}`);
                 
                 const errorTrimmed = error.trim();
-                // Debug raw stderr
                 console.log('[dalfox] stderr raw chunk:', errorTrimmed.replace(/\n/g, '\\n'));
                 
-                // Filter out known benign errors
                 if (!errorTrimmed) {
                     console.log('[dalfox] stderr: empty/whitespace, ignoring');
                     return;
                 }
                 
-                // Skip Loopback IPAddressSpace errors and unmarshal errors
                 if (errorTrimmed.includes('Loopback') || 
                     errorTrimmed.includes('could not unmarshal event') ||
                     errorTrimmed.includes('IPAddressSpace') ||
                     errorTrimmed.includes('unknown IPAddressSpace value')) {
-                    // These are internal Dalfox errors, not user-facing issues
                     console.log('[dalfox] stderr: filtered known benign error (Loopback/IPAddressSpace)', errorTrimmed);
                     return;
                 }
                 
-                // Only log genuine errors (not debug/info messages) to frontend
                 if (errorTrimmed.includes('ERROR:') || errorTrimmed.includes('FATAL:')) {
-                    // But still filter out the known benign ones
                     if (!errorTrimmed.match(/Loopback|IPAddressSpace|unmarshal/i)) {
                         this.logger.addLog(`dalfox stderr: ${errorTrimmed}`, 'warning');
                         console.log('[dalfox] stderr: logged as warning', errorTrimmed);
@@ -181,7 +153,6 @@ class DalfoxExecutor {
                         console.log('[dalfox] stderr: matched benign pattern despite ERROR/FATAL, ignoring', errorTrimmed);
                     }
                 } else {
-                    // Not a fatal pattern - log for debugging (console only)
                     this.logger.addLog(`dalfox stderr: ${errorTrimmed}`, 'debug', null, true);
                     console.log('[dalfox] stderr: non-fatal message (debug):', errorTrimmed);
                 }
@@ -191,7 +162,6 @@ class DalfoxExecutor {
                 this.activeProcesses.delete(processKey);
                 console.log('[dalfox] process closed, code=', code);
 
-                // Process any remaining buffer
                 if (jsonBuffer.trim()) {
                     console.log('[dalfox] processing remaining buffer at close, length=', jsonBuffer.trim().length);
                     try {
@@ -216,7 +186,6 @@ class DalfoxExecutor {
                         }
                     } catch (finalParseErr) {
                         console.log('[dalfox] final buffer JSON.parse error:', finalParseErr.message);
-                        // Ignore parse errors on final buffer
                     }
                 } else {
                     console.log('[dalfox] no remaining buffer at close');
@@ -243,53 +212,34 @@ class DalfoxExecutor {
         });
     }
 
-    /**
-     * Check if a string looks like a vulnerability JSON line
-     * Filters for lines containing "type":"V" or similar vulnerability indicators
-     */
     _isVulnerabilityJson(line) {
-        // Must be a JSON object (starts with {)
         if (!line.startsWith('{')) return false;
-        
-        // Check for vulnerability type indicators
-        // Look for "type":"V" or "type":"POC" or "type":"VULN"
         const match = /"type"\s*:\s*"(V|POC|VULN)"/.test(line);
         console.log('[dalfox] _isVulnerabilityJson check ->', match, 'for line start:', line.substring(0,80));
         return match;
     }
 
-    /**
-     * Parse Dalfox JSON output
-     */
     _parseOutput(result, onVulnerabilityFound) {
-        // Handle different Dalfox output formats
         const vulnType = result.type;
         console.log('[dalfox] _parseOutput called with type=', vulnType, 'result keys=', Object.keys(result));
 
         if (vulnType === 'V' || vulnType === 'POC' || vulnType === 'VULN') {
-            // Extract URL from various possible locations
-            // Dalfox can output: { "data": "http://...", ... } or { "data": { "url": "http://..." }, ... }
             let endpoint = 'unknown';
             
             if (result.data) {
                 if (typeof result.data === 'string') {
-                    // data is directly the URL string
                     endpoint = result.data;
                 } else if (typeof result.data === 'object' && result.data.url) {
-                    // data is an object with url property
                     endpoint = result.data.url;
                 } else if (typeof result.data === 'object' && result.data.target) {
-                    // sometimes dalfox uses "target" inside data
                     endpoint = result.data.target;
                 }
             }
             
-            // Fallback to other possible fields
             if (endpoint === 'unknown' && result.url) {
                 endpoint = result.url;
             }
             
-            // If still unknown, try extracting from any URL-like string in the object
             if (endpoint === 'unknown') {
                 const jsonStr = JSON.stringify(result);
                 const urlMatch = jsonStr.match(/https?:\/\/[^\s"]+/);
@@ -298,17 +248,13 @@ class DalfoxExecutor {
                 }
             }
             
-            // Extract parameter
             const param = result.param || result.data?.param || 'unknown';
             
-            // Extract payload
             const payload = result.payload || result.data?.payload || 'detected';
             
-            // Extract inject type and method for better description
             const injectType = result.inject_type || result.data?.inject_type || '';
             const method = result.method || result.data?.method || 'GET';
             
-            // Build description
             let description = `XSS ${vulnType === 'V' ? 'vulnerability' : vulnType.toLowerCase()} encontrado`;
             if (method !== 'GET') {
                 description += ` (${method})`;
@@ -331,11 +277,9 @@ class DalfoxExecutor {
                 description: description
             };
 
-            // Log detailed vulnerability information
             this.logger.addLog(`✓ XSS detectado: ${endpoint} - Parámetro: ${param}`, 'success');
             this.logger.addLog(`  Tipo: ${vulnType} | Severidad: ${vuln.severity} | Payload: ${payload.substring(0, 50)}${payload.length > 50 ? '...' : ''}`, 'info');
 
-            // Debug logs showing the object we will send to onVulnerabilityFound
             console.log('[dalfox] prepared vuln object:', vuln);
 
             if (onVulnerabilityFound) {
@@ -350,7 +294,6 @@ class DalfoxExecutor {
                 console.log('[dalfox] onVulnerabilityFound callback not provided');
             }
         } else if (result.type === 'GREP' || result.type === 'INFO') {
-            // Only log INFO messages in console, not frontend
             if (result.message && !result.message.match(/Loopback|IPAddressSpace/i)) {
                 this.logger.addLog(result.message, 'debug', null, true);
             }
@@ -360,9 +303,6 @@ class DalfoxExecutor {
         }
     }
 
-    /**
-     * Map Dalfox severity to our scale
-     */
     _mapSeverity(dalfoxSeverity) {
         const severity = dalfoxSeverity.toLowerCase();
         if (severity.includes('critical') || severity.includes('high')) {
@@ -374,9 +314,6 @@ class DalfoxExecutor {
         }
     }
 
-    /**
-     * Run a command with timeout (for version checks)
-     */
     async runCommand(args, timeout = 30000) {
         console.log('[dalfox] runCommand: executing', this.toolConfig.path, args.join(' '));
         return new Promise((resolve, reject) => {

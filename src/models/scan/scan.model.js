@@ -50,7 +50,7 @@ const scanSchema = new mongoose.Schema({
         puntos_cuestionario: { type: Number, default: 0 },
         total_puntos_cuestionario: { type: Number, default: 0 },
         vulnerabilidades_encontradas: { type: Number, default: 0 },
-        puntuacion_final: { type: Number, default: 0 }, // Puntuación sobre 100
+        puntuacion_final: { type: Number, default: 0 },
         calificacion: { type: String, enum: ['Excelente', 'Bueno', 'Regular', 'Deficiente', 'Crítico'], default: 'Regular' }
     }
 });

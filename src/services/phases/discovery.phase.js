@@ -14,9 +14,7 @@ class DiscoveryPhase {
 
     async run() {
         await this.questionHandler.waitIfPaused();
-        
         await this.questionHandler.askQuestion(null, 'discovery');
-        
         await this.questionHandler.waitIfPaused();
 
         const crawlerFinishedHandler = (data) => {

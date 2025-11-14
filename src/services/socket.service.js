@@ -296,7 +296,6 @@ class SocketService {
 
                 console.log(`Scan ${scanId} completed and saved. Score: ${scan.puntuacion.puntuacion_final}, Grade: ${scan.puntuacion.calificacion}`);
 
-                // Create notification for scan completion
                 try {
                     const notification = new Notification({
                         user_id: scan.usuario_id,
