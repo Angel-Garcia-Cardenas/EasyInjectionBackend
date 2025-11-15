@@ -137,7 +137,6 @@ class SqlmapExecutor {
                             };
                             const csvFiles = listAllFiles(this.tmpDir);
                             if (csvFiles.length > 0) {
-                                console.log(`Archivos CSV encontrados: ${csvFiles.map(f => path.basename(f)).join(', ')}`)
                             } else {
                                 this.logger.addLog(`No se encontraron archivos CSV en tmp-dir`, 'debug');
                             }
@@ -149,7 +148,6 @@ class SqlmapExecutor {
                         return;
                     }
 
-                    console.log(`CSV encontrado: ${csvPath}`)
 
                     this.emitter.emit('crawler:finished', {
                         csvPath
@@ -269,7 +267,6 @@ class SqlmapExecutor {
 
             files.sort((a, b) => b.mtime - a.mtime);
             const selectedFile = files[0].path;
-            console.log(`CSV encontrado: ${selectedFile} (${files.length} archivo(s) CSV encontrado(s))`)
             return selectedFile;
         } catch (error) {
             this.logger.addLog(`Error buscando CSV: ${error.message}`, 'error');

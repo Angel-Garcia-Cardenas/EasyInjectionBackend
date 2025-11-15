@@ -28,7 +28,6 @@ router.get('/profile', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching user profile:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -100,7 +99,6 @@ router.put('/profile', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error updating profile:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -149,7 +147,6 @@ router.put('/password', auth, async (req, res) => {
             message: 'Contraseña actualizada exitosamente'
         });
     } catch (error) {
-        console.error('Error changing password:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -162,7 +159,6 @@ router.post('/logout', auth, async (req, res) => {
             message: 'Sesión cerrada exitosamente'
         });
     } catch (error) {
-        console.error('Logout error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -186,7 +182,6 @@ router.get('/sessions', auth, async (req, res) => {
             sessions: sessions
         });
     } catch (error) {
-        console.error('Error fetching sessions:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -201,7 +196,6 @@ router.delete('/sessions/:sessionId', auth, async (req, res) => {
             message: 'Sesión cerrada exitosamente'
         });
     } catch (error) {
-        console.error('Error closing session:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -214,7 +208,6 @@ router.delete('/sessions', auth, async (req, res) => {
             message: 'Todas las sesiones cerradas exitosamente'
         });
     } catch (error) {
-        console.error('Error closing all sessions:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -247,7 +240,6 @@ router.get('/statistics', auth, async (req, res) => {
     
     res.json(statistics);
   } catch (error) {
-    console.error('Get statistics error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -276,7 +268,6 @@ router.delete('/account', auth, async (req, res) => {
     
     res.json({ message: 'Tu cuenta ha sido eliminada exitosamente' });
   } catch (error) {
-    console.error('Delete account error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
     }
 });

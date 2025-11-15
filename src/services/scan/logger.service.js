@@ -51,14 +51,12 @@ class Logger {
 
     addLog(message, level = 'info', phase = null, consoleOnly = false) {
         if (consoleOnly) {
-            console.log(`[${level.toUpperCase()}] ${message}`);
             return;
         }
         
         if (this.shouldFilterLog(message, level)) {
             const lowerMessage = message.toLowerCase();
             if (lowerMessage.includes('sqlmap') || lowerMessage.includes('dalfox')) {
-                console.log(`[${level.toUpperCase()}] ${message}`);
             }
             return;
         }
@@ -78,7 +76,6 @@ class Logger {
             this.emitter.emit('log:added', logEntry);
         }
         
-        console.log(`[${level.toUpperCase()}] ${message}`);
     }
 
     getRecentLogs(count = 50) {

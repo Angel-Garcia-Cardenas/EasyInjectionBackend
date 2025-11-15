@@ -78,7 +78,6 @@ router.get("/", auth, async (req, res) => {
       timeframe,
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -128,7 +127,6 @@ router.get("/me", auth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get user stats error:", error);
     res.status(500).json({
       error: "Error interno del servidor",
     });

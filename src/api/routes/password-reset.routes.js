@@ -90,7 +90,6 @@ router.post('/forgot-password', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Forgot password error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -169,7 +168,6 @@ router.post('/reset-password', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Reset password error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });

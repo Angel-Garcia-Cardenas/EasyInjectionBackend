@@ -10,7 +10,6 @@ router.get("/", auth, async (req, res) => {
       .limit(10);
     res.json(activities);
   } catch (error) {
-    console.error("Error fetching activities:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -27,7 +26,6 @@ router.put("/:id/read", auth, async (req, res) => {
     }
     res.json({ message: "Actividad marcada como leída" });
   } catch (error) {
-    console.error("Error updating activity:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });

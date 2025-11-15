@@ -46,7 +46,6 @@ passport.use(
         await newUser.save();
         return done(null, newUser);
     } catch (error) {
-        console.error('Google OAuth error:', error);
         return done(error, null);
     }
     }

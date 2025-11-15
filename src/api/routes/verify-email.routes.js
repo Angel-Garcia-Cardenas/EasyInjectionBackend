@@ -44,7 +44,6 @@ router.post('/', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Email verification error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -85,7 +84,6 @@ router.get('/:token', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Email verification error:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });
@@ -141,7 +139,6 @@ router.post('/resend', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Error resending verification email:', error);
         res.status(500).json({ 
             error: 'Error interno del servidor' 
         });

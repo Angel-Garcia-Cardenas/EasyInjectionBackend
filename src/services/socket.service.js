@@ -43,7 +43,6 @@ class SocketService {
         });
 
         this.io.on('connection', (socket) => {
-            console.log(`Client connected: ${socket.id}, User: ${socket.userId}`);
 
             socket.on('scan:join', async (data) => {
                 const { scanId } = data;
@@ -59,14 +58,12 @@ class SocketService {
                     }
 
                     socket.join(`scan:${scanId}`);
-                    console.log(`Socket ${socket.id} joined scan room: ${scanId}`);
 
                     const orchestrator = this.activeScans.get(scanId);
                     if (orchestrator) {
                         socket.emit('scan:status', orchestrator.getStatus());
                     }
                 } catch (error) {
-                    console.error('Error joining scan room:', error);
                     socket.emit('error', { message: 'Error joining scan room' });
                 }
             });
@@ -96,7 +93,6 @@ class SocketService {
                     await scan.save();
 
                     orchestrator.start().catch(error => {
-                        console.error('Scan execution error:', error);
                         this.io.to(`scan:${scanId}`).emit('scan:error', { 
                             message: error.message 
                         });
@@ -104,7 +100,6 @@ class SocketService {
 
                     socket.emit('scan:started', { scanId });
                 } catch (error) {
-                    console.error('Error starting scan:', error);
                     socket.emit('error', { message: 'Error starting scan' });
                 }
             });
@@ -178,7 +173,6 @@ class SocketService {
                     scan.fecha_fin = new Date();
                     await scan.save();
                 } catch (error) {
-                    console.error('Error stopping scan:', error);
                 }
 
                 orchestrator.stop();
@@ -189,15 +183,12 @@ class SocketService {
             socket.on('scan:leave', (data) => {
                 const { scanId } = data;
                 socket.leave(`scan:${scanId}`);
-                console.log(`Socket ${socket.id} left scan room: ${scanId}`);
             });
 
             socket.on('disconnect', () => {
-                console.log(`Client disconnected: ${socket.id}`);
             });
         });
 
-        console.log('Socket.io service initialized');
     }
 
     setupOrchestratorListeners(orchestrator, scanId) {
@@ -259,7 +250,6 @@ class SocketService {
             try {
                 const scan = await Scan.findById(scanId);
                 if (!scan) {
-                    console.error(`Scan ${scanId} not found`);
                     return;
                 }
 
@@ -276,7 +266,6 @@ class SocketService {
                             totalQuizPoints += question.puntos;
                         }
                     } catch (err) {
-                        console.error(`Error fetching question ${ans.pregunta_id}:`, err);
                     }
                 }
                 
@@ -294,7 +283,6 @@ class SocketService {
                 
                 await scan.save();
 
-                console.log(`Scan ${scanId} completed and saved. Score: ${scan.puntuacion.puntuacion_final}, Grade: ${scan.puntuacion.calificacion}`);
 
                 try {
                     const notification = new Notification({
@@ -306,9 +294,7 @@ class SocketService {
                         leido: false
                     });
                     await notification.save();
-                    console.log(`Notification created for scan ${scanId} completion`);
                 } catch (notifError) {
-                    console.error('Error creating notification:', notifError);
                 }
 
                 try {
@@ -322,16 +308,13 @@ class SocketService {
                         read: false
                     });
                     await activity.save();
-                    console.log(`Activity log created for scan ${scanId} completion`);
                 } catch (activityError) {
-                    console.error('Error creating activity log:', activityError);
                 }
 
                 this.io.to(room).emit('scan:completed', data);
                 
                 this.activeScans.delete(scanId);
             } catch (error) {
-                console.error('Error completing scan:', error);
                 this.io.to(room).emit('scan:error', { message: 'Error guardando el escaneo: ' + error.message });
             }
         });
@@ -347,7 +330,6 @@ class SocketService {
                 this.io.to(room).emit('scan:error', data);
                 this.activeScans.delete(scanId);
             } catch (error) {
-                console.error('Error handling scan error:', error);
             }
         });
     }
@@ -413,7 +395,6 @@ class SocketService {
                 await vulnerability.save();
                 savedIds.push(vulnerability._id);
             } catch (error) {
-                console.error(`Error saving vulnerability: ${error.message}`, vuln);
             }
         }
 
@@ -431,7 +412,6 @@ class SocketService {
                 if (result.questionId) {
                     question = await Question.findById(result.questionId);
                     if (!question) {
-                        console.error(`Question with ID ${result.questionId} not found`);
                         continue;
                     }
                     
@@ -498,7 +478,6 @@ class SocketService {
 
                 savedAnswers.push(userAnswer);
             } catch (error) {
-                console.error(`Error saving question answer: ${error.message}`, result);
             }
         }
 

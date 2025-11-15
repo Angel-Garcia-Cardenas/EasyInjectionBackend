@@ -40,7 +40,6 @@ router.get('/', auth, async (req, res) => {
             scans: scansWithDetails
         });
     } catch (error) {
-        console.error('Error fetching scans:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -80,7 +79,6 @@ router.get('/:id', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching scan details:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -169,7 +167,6 @@ router.get('/:id/report', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching scan report:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -205,7 +202,6 @@ router.post('/', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error creating scan:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -246,7 +242,6 @@ router.put('/:id', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error updating scan:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -275,7 +270,6 @@ router.delete('/:id', auth, async (req, res) => {
             message: 'Escaneo eliminado exitosamente'
         });
     } catch (error) {
-        console.error('Error deleting scan:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -318,7 +312,6 @@ router.post('/:id/vulnerabilities', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error adding vulnerability:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -360,7 +353,6 @@ router.post('/:id/start', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error starting scan:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -394,7 +386,6 @@ router.get('/:id/status', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching scan status:', error);
         res.status(500).json({
             success: false,
             error: 'Error interno del servidor'
@@ -429,7 +420,6 @@ router.get('/search', auth, async (req, res) => {
     
     res.json(scans);
   } catch (error) {
-    console.error('Search scans error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -452,7 +442,6 @@ router.get('/scoreboard', auth, async (req, res) => {
     
     res.json({ scans });
   } catch (error) {
-    console.error('Get scoreboard error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

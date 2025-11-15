@@ -11,7 +11,6 @@ router.get("/", auth, async (req, res) => {
       .limit(50);
     res.json(notifications);
   } catch (error) {
-    console.error("Get notifications error:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -24,7 +23,6 @@ router.get('/unread-count', auth, async (req, res) => {
     });
     res.json({ count });
   } catch (error) {
-    console.error('Get unread count error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -38,7 +36,6 @@ router.put('/:id/read', auth, async (req, res) => {
     );
     res.json(notification);
   } catch (error) {
-    console.error('Mark notification as read error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -51,7 +48,6 @@ router.post('/mark-all-read', auth, async (req, res) => {
     );
     res.json({ message: 'Todas las notificaciones marcadas como leídas' });
   } catch (error) {
-    console.error('Mark all as read error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -64,7 +60,6 @@ router.delete('/:id', auth, async (req, res) => {
     });
     res.json({ message: 'Notificación eliminada' });
   } catch (error) {
-    console.error('Delete notification error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -16,7 +16,6 @@ exports.getProgress = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting lesson progress:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el progreso de las lecciones',
@@ -44,7 +43,6 @@ exports.getProgressStats = async (req, res) => {
       data: stats
     });
   } catch (error) {
-    console.error('Error getting progress stats:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener las estadísticas de progreso',
@@ -67,7 +65,6 @@ exports.getLessonProgress = async (req, res) => {
       data: lessonDetails
     });
   } catch (error) {
-    console.error('Error getting lesson progress:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el progreso de la lección',
@@ -99,7 +96,6 @@ exports.markLessonViewed = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error marking lesson as viewed:', error);
     res.status(500).json({
       success: false,
       message: 'Error al marcar la lección como vista',
@@ -132,7 +128,6 @@ exports.markLessonCompleted = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error marking lesson as completed:', error);
     res.status(500).json({
       success: false,
       message: 'Error al marcar la lección como completada',
@@ -154,7 +149,6 @@ exports.resetProgress = async (req, res) => {
       message: 'Progreso reiniciado correctamente'
     });
   } catch (error) {
-    console.error('Error resetting progress:', error);
     res.status(500).json({
       success: false,
       message: 'Error al reiniciar el progreso',

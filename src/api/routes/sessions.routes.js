@@ -8,7 +8,6 @@ router.get('/', auth, async (req, res) => {
     const user = await User.findById(req.user._id).select('activeSessions');
     res.json(user.activeSessions);
   } catch (error) {
-    console.error('Get sessions error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -18,7 +17,6 @@ router.post('/close-all', auth, async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, { activeSessions: [] });
     res.json({ message: 'Todas las sesiones han sido cerradas' });
   } catch (error) {
-    console.error('Close all sessions error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -30,7 +28,6 @@ router.delete('/:sessionId', auth, async (req, res) => {
     });
     res.json({ message: 'Sesión cerrada' });
   } catch (error) {
-    console.error('Close session error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

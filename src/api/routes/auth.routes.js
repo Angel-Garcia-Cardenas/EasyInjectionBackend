@@ -13,7 +13,6 @@ router.get("/verify", auth, async (req, res) => {
       user: req.user,
     });
   } catch (error) {
-    console.error("Error verifying token:", error);
     res.status(500).json({
       error: "Error interno del servidor",
     });
@@ -46,7 +45,6 @@ router.get("/me", auth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching user profile:", error);
     res.status(500).json({
       error: "Error interno del servidor",
     });
@@ -80,7 +78,6 @@ router.get(
       await req.user.save();
       res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
     } catch (error) {
-      console.error("Google OAuth error:", error);
       res.redirect("/login?error=internal_server_error");
     }
   }
