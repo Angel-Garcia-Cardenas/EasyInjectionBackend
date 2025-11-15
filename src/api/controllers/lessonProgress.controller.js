@@ -1,119 +1,165 @@
-const LessonProgress = require('../../models/lessonProgress.model');
+const LessonProgress = require('../../models/user/lessonProgress.model');
 
+// GET /api/lessons/progress
+// Get user's complete progress
 exports.getProgress = async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        const stats = await LessonProgress.getProgressStats(userId);
-
-        res.status(200).json({
-            success: true,
-            data: {
-                completedLessons: stats.completedLessons,
-                completedCount: stats.completedCount,
-                lastCompletedAt: stats.lastCompletedAt,
-                startedLessons: stats.startedLessons,
-                startedCount: stats.startedCount,
-                hasStartedAny: stats.hasStartedAny
-            }
-        });
-    } catch (error) {
-        console.error('Error getting lesson progress:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error al obtener el progreso de las lecciones'
-        });
-    }
+  try {
+    const userId = req.user._id;
+    
+    const progress = await LessonProgress.getUserProgress(userId);
+    
+    res.json({
+      success: true,
+      data: {
+        lessons: progress.lessons,
+        lastActivity: progress.lastActivity
+      }
+    });
+  } catch (error) {
+    console.error('Error getting lesson progress:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener el progreso de las lecciones',
+      error: error.message
+    });
+  }
 };
 
-exports.markLessonComplete = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { lessonId } = req.params;
-
-        if (!lessonId) {
-            return res.status(400).json({
-                success: false,
-                message: 'El ID de la lección es requerido'
-            });
-        }
-
-        const progress = await LessonProgress.markLessonComplete(userId, lessonId);
-
-        console.log(`User ${userId} completed lesson ${lessonId}`);
-
-        res.status(200).json({
-            success: true,
-            data: {
-                lessonId: progress.lessonId,
-                completed: progress.completed,
-                completedAt: progress.completedAt
-            },
-            message: 'Lección completada exitosamente'
-        });
-    } catch (error) {
-        console.error('Error marking lesson as complete:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error al marcar la lección como completada'
-        });
+// GET /api/lessons/progress/stats
+// Get progress statistics
+exports.getProgressStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { lessonIds } = req.query; // Optional: filter by specific lessons
+    
+    let lessonIdsArray = null;
+    if (lessonIds) {
+      lessonIdsArray = Array.isArray(lessonIds) ? lessonIds : lessonIds.split(',');
     }
+    
+    const stats = await LessonProgress.getProgressStats(userId, lessonIdsArray);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error getting progress stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener las estadísticas de progreso',
+      error: error.message
+    });
+  }
 };
 
-exports.markLessonStarted = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { lessonId } = req.params;
-
-        if (!lessonId) {
-            return res.status(400).json({
-                success: false,
-                message: 'El ID de la lección es requerido'
-            });
-        }
-
-        const progress = await LessonProgress.markLessonStarted(userId, lessonId);
-
-        console.log(`User ${userId} started lesson ${lessonId}`);
-
-        res.status(200).json({
-            success: true,
-            data: {
-                lessonId: progress.lessonId,
-                started: progress.started,
-                startedAt: progress.startedAt
-            },
-            message: 'Lección marcada como iniciada'
-        });
-    } catch (error) {
-        console.error('Error marking lesson as started:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error al marcar la lección como iniciada'
-        });
-    }
-};
-
+// GET /api/lessons/progress/:lessonId
+// Get specific lesson progress
 exports.getLessonProgress = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { lessonId } = req.params;
-
-        const progress = await LessonProgress.findOne({ userId, lessonId });
-
-        res.status(200).json({
-            success: true,
-            data: {
-                lessonId,
-                completed: progress ? progress.completed : false,
-                completedAt: progress ? progress.completedAt : null
-            }
-        });
-    } catch (error) {
-        console.error('Error getting lesson progress:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error al obtener el progreso de la lección'
-        });
-    }
+  try {
+    const userId = req.user._id;
+    const { lessonId } = req.params;
+    
+    const lessonDetails = await LessonProgress.getLessonDetails(userId, lessonId);
+    
+    res.json({
+      success: true,
+      data: lessonDetails
+    });
+  } catch (error) {
+    console.error('Error getting lesson progress:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener el progreso de la lección',
+      error: error.message
+    });
+  }
 };
+
+// POST /api/lessons/progress/:lessonId/view
+// Mark lesson as viewed
+exports.markLessonViewed = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { lessonId } = req.params;
+    
+    const progress = await LessonProgress.markLessonViewed(userId, lessonId);
+    
+    const lesson = progress.lessons.find(l => l.lessonId === lessonId);
+    
+    res.json({
+      success: true,
+      message: 'Lección marcada como vista',
+      data: {
+        lessonId,
+        status: lesson.status,
+        firstViewedAt: lesson.firstViewedAt,
+        lastViewedAt: lesson.lastViewedAt,
+        viewCount: lesson.viewCount
+      }
+    });
+  } catch (error) {
+    console.error('Error marking lesson as viewed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al marcar la lección como vista',
+      error: error.message
+    });
+  }
+};
+
+// POST /api/lessons/progress/:lessonId/complete
+// Mark lesson as completed
+exports.markLessonCompleted = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { lessonId } = req.params;
+    
+    const progress = await LessonProgress.markLessonCompleted(userId, lessonId);
+    
+    const lesson = progress.lessons.find(l => l.lessonId === lessonId);
+    
+    res.json({
+      success: true,
+      message: 'Lección marcada como completada',
+      data: {
+        lessonId,
+        status: lesson.status,
+        completedAt: lesson.completedAt,
+        firstViewedAt: lesson.firstViewedAt,
+        lastViewedAt: lesson.lastViewedAt,
+        viewCount: lesson.viewCount
+      }
+    });
+  } catch (error) {
+    console.error('Error marking lesson as completed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al marcar la lección como completada',
+      error: error.message
+    });
+  }
+};
+
+// DELETE /api/lessons/progress/reset
+// Reset all progress (for testing/debugging)
+exports.resetProgress = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    await LessonProgress.findOneAndDelete({ userId });
+    
+    res.json({
+      success: true,
+      message: 'Progreso reiniciado correctamente'
+    });
+  } catch (error) {
+    console.error('Error resetting progress:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reiniciar el progreso',
+      error: error.message
+    });
+  }
+};
+
