@@ -16,7 +16,7 @@ require('./src/config/routes')(app);
 const angularDistPath = path.join(__dirname, './dist/frontend/browser');
 
 app.use(express.static(angularDistPath));
-app.get("*", (req, res) => {
+app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(angularDistPath, 'index.html'));
 });
 
