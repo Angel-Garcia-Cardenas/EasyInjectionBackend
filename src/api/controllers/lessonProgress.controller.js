@@ -1,7 +1,5 @@
 const LessonProgress = require('../../models/user/lessonProgress.model');
 
-// GET /api/lessons/progress
-// Get user's complete progress
 exports.getProgress = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -24,12 +22,10 @@ exports.getProgress = async (req, res) => {
   }
 };
 
-// GET /api/lessons/progress/stats
-// Get progress statistics
 exports.getProgressStats = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { lessonIds } = req.query; // Optional: filter by specific lessons
+    const { lessonIds } = req.query;
     
     let lessonIdsArray = null;
     if (lessonIds) {
@@ -51,8 +47,6 @@ exports.getProgressStats = async (req, res) => {
   }
 };
 
-// GET /api/lessons/progress/:lessonId
-// Get specific lesson progress
 exports.getLessonProgress = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -73,8 +67,6 @@ exports.getLessonProgress = async (req, res) => {
   }
 };
 
-// POST /api/lessons/progress/:lessonId/view
-// Mark lesson as viewed
 exports.markLessonViewed = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -104,8 +96,6 @@ exports.markLessonViewed = async (req, res) => {
   }
 };
 
-// POST /api/lessons/progress/:lessonId/complete
-// Mark lesson as completed
 exports.markLessonCompleted = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -136,8 +126,6 @@ exports.markLessonCompleted = async (req, res) => {
   }
 };
 
-// DELETE /api/lessons/progress/reset
-// Reset all progress (for testing/debugging)
 exports.resetProgress = async (req, res) => {
   try {
     const userId = req.user._id;

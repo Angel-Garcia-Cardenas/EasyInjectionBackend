@@ -84,7 +84,6 @@ class SqlmapExecutor {
             const finishPattern = /\[?\d{2}:\d{2}:\d{2}\]?.*\[INFO\]\s+found a total of \d+ targets/i;
             // const finishPattern = /\[\d{2}:\d{2}:\d{2}\]\s+\[INFO\]\s+using\s+['"].+?results-[^'"]+\.csv['"]\s+as the CSV results file in multiple targets mode/i;
 
-            // Graceful kill function
             const gracefulKill = async (proc, gracePeriod = 300) => {
                 try {
                     proc.kill('SIGTERM');

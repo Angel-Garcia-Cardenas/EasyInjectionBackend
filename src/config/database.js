@@ -5,10 +5,11 @@ module.exports = function(){
     const db = process.env.MONGODB_URI;
     mongoose.connect(db)
         .then(() => {
-            // Connected to database
+            console.log('Connected to database');
+            
         })
         .catch(err => {
-            // Error connecting to MongoDB
+            console.log('Error connecting to database', err);
         });
 }
 
